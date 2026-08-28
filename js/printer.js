@@ -83,7 +83,7 @@ export const ThermalPrinter = {
 
     out.push(divider);
     out.push(center(coach?.motto || 'Votre transformation, votre mission !'));
-    out.push('\n\n\n');
+    out.push('\n');
     return this.sanitizeForThermal(out.join('\n'));
   },
 
@@ -148,9 +148,9 @@ export const ThermalPrinter = {
     out.push(center('SIGNATURES'));
     out.push('\n');
     out.push(row('Le Coach', 'Le Client'));
-    out.push('\n\n');
+    out.push('\n');
     out.push(center('Merci pour votre confiance !'));
-    out.push('\n\n\n');
+    out.push('\n');
     return this.sanitizeForThermal(out.join('\n'));
   },
 
@@ -212,7 +212,7 @@ export const ThermalPrinter = {
 
     out.push(divider);
     out.push(center('Discipline & Regularite !'));
-    out.push('\n\n\n');
+    out.push('\n');
     return this.sanitizeForThermal(out.join('\n'));
   },
 
@@ -220,8 +220,8 @@ export const ThermalPrinter = {
     return typeof navigator !== 'undefined' && !!navigator.bluetooth;
   },
 
-  cachedDevice: null,
-  cachedWriteChar: null,
+  cachedDevice: (typeof window !== 'undefined' && window.__COACH_BT_DEVICE__) ? window.__COACH_BT_DEVICE__ : null,
+  cachedWriteChar: (typeof window !== 'undefined' && window.__COACH_BT_CHAR__) ? window.__COACH_BT_CHAR__ : null,
 
   KNOWN_SERVICES: [
     '000018f0-0000-1000-8000-00805f9b34fb', // Standard POS Printer
@@ -239,13 +239,13 @@ export const ThermalPrinter = {
   ],
 
   getConnectedDeviceName() {
-    return this.cachedDevice ? (this.cachedDevice.name || 'Imprimante Bluetooth') : null;
+    const dev = this.cachedDevice || (typeof window !== 'undefined' ? window.__COACH_BT_DEVICE__ : null);
+    return dev ? (dev.name || 'Imprimante Bluetooth') : null;
   },
 
   async findWriteCharacteristic(server) {
     let writeChar = null;
 
-    // Recherche ciblée sur chaque service connu pour éviter l'erreur de sécurité Chrome / Bluefy
     for (const uuid of this.KNOWN_SERVICES) {
       try {
         const service = await server.getPrimaryService(uuid);
@@ -260,11 +260,10 @@ export const ThermalPrinter = {
           if (writeChar) break;
         }
       } catch (e) {
-        // Continuer avec le prochain service
+        // Continuer
       }
     }
 
-    // Si toujours introuvable, tentative globale
     if (!writeChar) {
       try {
         const services = await server.getPrimaryServices();
@@ -278,9 +277,7 @@ export const ThermalPrinter = {
           }
           if (writeChar) break;
         }
-      } catch (e) {
-        // Ignorer
-      }
+      } catch (e) {}
     }
 
     return writeChar;
@@ -289,69 +286,76 @@ export const ThermalPrinter = {
   setCachedDevice(device, writeChar) {
     this.cachedDevice = device;
     this.cachedWriteChar = writeChar;
+    if (typeof window !== 'undefined') {
+      window.__COACH_BT_DEVICE__ = device;
+      window.__COACH_BT_CHAR__ = writeChar;
+    }
 
     try {
       localStorage.setItem('coach_last_bt_device', device.name || 'Imprimante Bluetooth');
     } catch (e) {}
-
-    device.addEventListener('gattserverdisconnected', () => {
-      console.log('Imprimante Bluetooth en veille / déconnectée');
-      this.cachedWriteChar = null;
-    });
   },
 
   forgetDevice() {
-    if (this.cachedDevice && this.cachedDevice.gatt && this.cachedDevice.gatt.connected) {
+    const dev = this.cachedDevice || (typeof window !== 'undefined' ? window.__COACH_BT_DEVICE__ : null);
+    if (dev && dev.gatt && dev.gatt.connected) {
       try {
-        this.cachedDevice.gatt.disconnect();
+        dev.gatt.disconnect();
       } catch (e) {}
     }
     this.cachedDevice = null;
     this.cachedWriteChar = null;
+    if (typeof window !== 'undefined') {
+      window.__COACH_BT_DEVICE__ = null;
+      window.__COACH_BT_CHAR__ = null;
+    }
     try {
       localStorage.removeItem('coach_last_bt_device');
     } catch (e) {}
   },
 
   async getWritableCharacteristic(forceNew = false) {
-    // 1. Si déjà connecté et actif, renvoyer immédiatement sans ouvrir de popup
-    if (!forceNew && this.cachedDevice && this.cachedDevice.gatt && this.cachedDevice.gatt.connected && this.cachedWriteChar) {
-      return { device: this.cachedDevice, writeChar: this.cachedWriteChar };
+    const dev = this.cachedDevice || (typeof window !== 'undefined' ? window.__COACH_BT_DEVICE__ : null);
+
+    // 1. Si déjà connecté et actif, renvoyer immédiatement
+    if (!forceNew && dev && dev.gatt && dev.gatt.connected && this.cachedWriteChar) {
+      return { device: dev, writeChar: this.cachedWriteChar };
     }
 
-    // 2. Si un appareil en mémoire existe mais déconnecté, reconnexion transparente à chaud
-    if (!forceNew && this.cachedDevice && this.cachedDevice.gatt) {
-      try {
-        const server = await this.cachedDevice.gatt.connect();
-        const writeChar = await this.findWriteCharacteristic(server);
-        if (writeChar) {
-          this.cachedWriteChar = writeChar;
-          return { device: this.cachedDevice, writeChar };
+    // 2. Si l'imprimante est mémorisée, tenter la reconnexion directe avec retries sans jamais ré-ouvrir le sélecteur
+    if (!forceNew && dev && dev.gatt) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const server = dev.gatt.connected ? dev.gatt : await dev.gatt.connect();
+          const writeChar = await this.findWriteCharacteristic(server);
+          if (writeChar) {
+            this.setCachedDevice(dev, writeChar);
+            return { device: dev, writeChar };
+          }
+        } catch (err) {
+          console.warn(`Tentative de reconnexion ${attempt}/2...`, err);
+          await new Promise(r => setTimeout(r, 200));
         }
-      } catch (err) {
-        console.warn('Reconnexion transparente échouée, ouverture du scan:', err);
       }
     }
 
-    // 3. Vérifier les appareils déjà autorisés (getDevices) dans Bluefy / Chrome
+    // 3. Vérifier navigator.bluetooth.getDevices() si disponible
     if (!forceNew && navigator.bluetooth.getDevices) {
       try {
         const devices = await navigator.bluetooth.getDevices();
         if (devices && devices.length > 0) {
-          const device = devices[0];
-          const server = await device.gatt.connect();
+          const foundDev = devices[0];
+          const server = foundDev.gatt.connected ? foundDev.gatt : await foundDev.gatt.connect();
           const writeChar = await this.findWriteCharacteristic(server);
           if (writeChar) {
-            this.setCachedDevice(device, writeChar);
-            return { device, writeChar };
+            this.setCachedDevice(foundDev, writeChar);
+            return { device: foundDev, writeChar };
           }
         }
-      } catch (err) {
-        // Continuer vers requestDevice
-      }
+      } catch (err) {}
     }
 
-    // 4. Scanner et sélectionner l'appareil (1 seule fois)
+    // 4. Si aucune imprimante mémorisée, ouvrir la boîte de dialogue Bluefy/Chrome une seule fois
     const device = await navigator.bluetooth.requestDevice({
       acceptAllDevices: true,
       optionalServices: this.KNOWN_SERVICES
@@ -408,9 +412,9 @@ export const ThermalPrinter = {
         await new Promise(r => setTimeout(r, 20));
       }
 
-      // 3. Avance papier & saut de lignes
-      await sendChunk(new Uint8Array([0x1B, 0x64, 0x04, 0x0A, 0x0A]));
-      await new Promise(r => setTimeout(r, 50));
+      // 3. Saut de ligne minimal juste pour atteindre la barre de découpe (Zéro gaspillage de papier)
+      await sendChunk(new Uint8Array([0x0A, 0x0A]));
+      await new Promise(r => setTimeout(r, 40));
 
       return { success: true, deviceName: device.name || 'Imprimante Bluetooth' };
     } catch (err) {
