@@ -1,8 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 /* ==========================================================================
-   COACCH PRO - DESIGN ÉPURÉ & PROFESSIONNEL
-   Sobriété, clarté et efficacité pour le coach sportif
+   COACH PRO - DESIGN SYSTEM MOBILE & DESKTOP
+   Sobriété, clarté et efficacité pour le coach sportif privé
    ========================================================================== */
 
 :root {
@@ -23,7 +23,7 @@
   --primary-hover: #059669;
   --primary-subtle: rgba(16, 185, 129, 0.12);
 
-  --font-body: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   --radius-sm: 6px;
@@ -35,6 +35,12 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+html, body {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 body {
@@ -112,10 +118,12 @@ h1, h2, h3, h4 {
   transition: background 0.15s, border-color 0.15s, transform 0.1s;
   text-decoration: none;
   white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .btn:active {
-  transform: scale(0.98);
+  transform: scale(0.96);
 }
 
 .btn-primary {
@@ -169,13 +177,13 @@ h1, h2, h3, h4 {
 }
 
 .btn-sm {
-  padding: 5px 10px;
+  padding: 6px 12px;
   font-size: 12px;
   border-radius: var(--radius-sm);
 }
 
 .btn-xs {
-  padding: 3px 6px;
+  padding: 4px 8px;
   font-size: 11px;
   border-radius: 4px;
 }
@@ -213,7 +221,7 @@ h1, h2, h3, h4 {
   background: var(--bg-input);
   border: 1px solid var(--border);
   color: #f9fafb;
-  padding: 8px 12px;
+  padding: 9px 12px;
   border-radius: var(--radius-md);
   font-size: 13px;
   font-family: inherit;
@@ -225,7 +233,7 @@ h1, h2, h3, h4 {
   border-color: var(--border-focus);
 }
 
-/* Navigation latérale */
+/* Navigation latérale Desktop */
 .nav-link {
   display: flex;
   align-items: center;
@@ -278,7 +286,7 @@ h1, h2, h3, h4 {
   font-weight: 700;
 }
 
-/* Barre de défilement horizontale fluide pour onglets mobiles */
+/* Barre de défilement fluide pour onglets */
 .sub-tabs-bar {
   display: flex;
   align-items: center;
@@ -293,7 +301,7 @@ h1, h2, h3, h4 {
   display: none;
 }
 
-/* Barre de Navigation Mobile */
+/* Barre de Navigation Mobile Fixe */
 .mobile-nav-btn {
   display: flex;
   flex-direction: column;
@@ -308,6 +316,8 @@ h1, h2, h3, h4 {
   cursor: pointer;
   transition: all 0.15s;
   min-width: 54px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .mobile-nav-btn:hover {
@@ -320,15 +330,15 @@ h1, h2, h3, h4 {
 }
 
 .mobile-nav-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
 }
 
 /* Support Safe Area pour iPhone & Android */
 #mobile-bottom-nav {
-  padding-bottom: max(6px, env(safe-area-inset-bottom));
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
-/* Modals Responsive */
+/* Modals & Native Bottom Sheets */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -337,8 +347,9 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 16px;
   z-index: 999;
+  transition: opacity 0.2s ease;
 }
 
 .modal-backdrop.hidden {
@@ -353,14 +364,34 @@ h1, h2, h3, h4 {
   width: 100%;
   max-height: 92vh;
   overflow-y: auto;
-  padding: 20px;
+  padding: 24px;
   -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 640px) {
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
   .modal-card {
-    padding: 16px;
-    border-radius: var(--radius-md);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    max-height: 90vh;
+    padding: 18px 16px;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    animation: slideUpSheet 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@keyframes slideUpSheet {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
   }
 }
 

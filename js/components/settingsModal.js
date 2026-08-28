@@ -76,23 +76,20 @@ export const SettingsModal = {
             <input type="text" name="motto" value="${coach.motto || ''}" placeholder="ex: Votre transformation, votre mission !" class="input text-xs" />
           </div>
 
-          <!-- Section Imprimante Thermique & Diagnostic Bluetooth -->
+          <!-- Section Imprimante Bluetooth -->
           <div class="p-3.5 rounded-lg bg-[#0c1220] border border-slate-800 space-y-2">
-            <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span>🖨️</span> Imprimante Thermique (58mm / 80mm)
-            </h4>
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span>📶</span> Imprimante Bluetooth
+              </h4>
+            </div>
             <p class="text-[11px] text-slate-400">
-              Testez la communication avec votre imprimante thermique de poche :
+              Assurez-vous que votre imprimante de poche est allumée avant de lancer le test :
             </p>
-            <div class="flex flex-wrap items-center gap-2 pt-1">
-              <button type="button" id="btn-test-bt-settings" class="btn btn-secondary btn-xs flex items-center gap-1">
-                <span>📶</span> Test Bluetooth BLE
-              </button>
-              <button type="button" id="btn-test-rawbt-settings" class="btn btn-outline btn-xs flex items-center gap-1">
-                <span>📱</span> Test App RawBT
-              </button>
-              <button type="button" id="btn-test-sys-settings" class="btn btn-outline btn-xs flex items-center gap-1">
-                <span>📄</span> Test Imprimer
+            <div class="pt-1">
+              <button type="button" id="btn-test-bt-settings" class="btn btn-secondary btn-sm w-full flex items-center justify-center gap-2 font-semibold">
+                <span>🖨️</span>
+                <span>Tester l'imprimante Bluetooth</span>
               </button>
             </div>
           </div>
@@ -119,8 +116,6 @@ export const SettingsModal = {
     const form = document.getElementById('form-coach-profile');
     const resetBtn = document.getElementById('btn-reset-app-data');
     const testBtBtn = document.getElementById('btn-test-bt-settings');
-    const testRawBtBtn = document.getElementById('btn-test-rawbt-settings');
-    const testSysBtn = document.getElementById('btn-test-sys-settings');
 
     const hide = () => this.close();
     closeBtnX?.addEventListener('click', hide);
@@ -138,8 +133,8 @@ export const SettingsModal = {
         `Coach : ${coach.name || 'COACH PRO'}`,
         `Tel   : ${coach.phone || '00 00 00 00'}`,
         '--------------------------------',
-        'Imprimante thermique fonctionnelle !',
-        'Pret pour les bilans et recus.',
+        'Imprimante Bluetooth connectee !',
+        'Pret pour imprimer les tickets.',
         '================================',
         '\n\n\n'
       ].join('\n');
@@ -147,27 +142,14 @@ export const SettingsModal = {
 
     testBtBtn?.addEventListener('click', async () => {
       try {
-        window.App.showToast('Recherche imprimante Bluetooth...', 'info');
+        window.App.showToast('Connexion à l\'imprimante Bluetooth...', 'info');
         const res = await ThermalPrinter.printViaBluetooth(getTestText());
         if (res.success) {
-          window.App.showToast(`Test réussi avec ${res.deviceName}`, 'success');
+          window.App.showToast(`Test d'impression réussi !`, 'success');
         }
       } catch (err) {
         window.App.showToast(err.message || 'Erreur Bluetooth', 'error');
       }
-    });
-
-    testRawBtBtn?.addEventListener('click', () => {
-      try {
-        ThermalPrinter.printViaRawBT(getTestText());
-        window.App.showToast('Envoi du test à l\'application d\'impression...', 'info');
-      } catch (err) {
-        window.App.showToast('Erreur envoi RawBT', 'error');
-      }
-    });
-
-    testSysBtn?.addEventListener('click', () => {
-      window.print();
     });
 
     form?.addEventListener('submit', (e) => {

@@ -159,6 +159,15 @@ class Application {
     document.getElementById('header-btn-quick-tools')?.addEventListener('click', () => {
       this.openQuickToolsModal();
     });
+
+    // Enregistrement Service Worker pour PWA / Mode Application Mobile
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => {
+          console.log('ServiceWorker registration error:', err);
+        });
+      });
+    }
   }
 }
 

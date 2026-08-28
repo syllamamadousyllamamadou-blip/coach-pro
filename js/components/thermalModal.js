@@ -231,53 +231,17 @@ export const ThermalModal = {
           </div>
         </div>
 
-        <!-- Actions d'Impression & Partage Multi-Appareils -->
-        <div class="space-y-3 pt-3 border-t border-slate-800">
-          
-          <!-- Ligne 1 : Options d'Impression Directe -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <button id="btn-print-thermal-bt" class="btn btn-primary btn-sm flex items-center justify-center gap-1.5" title="Connexion Bluetooth Directe (BLE)">
-              <span>📶</span>
-              <span>Bluetooth BLE</span>
-            </button>
+        <!-- Actions d'Impression Bluetooth & Partage -->
+        <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-800">
+          <button id="btn-share-thermal-wa" class="btn btn-whatsapp btn-sm flex items-center justify-center gap-1.5 flex-1">
+            <span>💬</span>
+            <span>WhatsApp</span>
+          </button>
 
-            <button id="btn-print-thermal-rawbt" class="btn btn-secondary btn-sm flex items-center justify-center gap-1.5" title="Imprimer via l'application Android RawBT / Bluetooth Print">
-              <span>🖨️</span>
-              <span>App RawBT</span>
-            </button>
-
-            <button id="btn-print-thermal-sys" class="btn btn-secondary btn-sm flex items-center justify-center gap-1.5" title="Impression Système (AirPrint sur iPhone, Wi-Fi, PDF)">
-              <span>📄</span>
-              <span>Imprimer</span>
-            </button>
-
-            <button id="btn-share-thermal-wa" class="btn btn-whatsapp btn-sm flex items-center justify-center gap-1.5">
-              <span>💬</span>
-              <span>WhatsApp</span>
-            </button>
-          </div>
-
-          <!-- Ligne 2 : Copier & Diagnostic Bluetooth -->
-          <div class="flex items-center justify-between gap-2 pt-1">
-            <button id="btn-copy-ticket-text" class="btn btn-outline btn-xs flex items-center gap-1">
-              <span>📋</span> Copier le texte
-            </button>
-
-            <button id="btn-toggle-bt-help" class="text-[11px] text-emerald-400 hover:underline flex items-center gap-1">
-              <span>💡</span> Aide connexion imprimante
-            </button>
-          </div>
-
-          <!-- Bloc Aide Bluetooth Roulant (Collapsible) -->
-          <div id="bt-help-box" class="hidden p-3 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300 space-y-2">
-            <div class="font-bold text-white flex items-center gap-1">
-              <span>ℹ️</span> Guide de connexion selon votre téléphone :
-            </div>
-            <ul class="list-disc pl-4 space-y-1 text-slate-400">
-              <li><strong class="text-white">Sur Android (Google Chrome) :</strong> Cliquez sur <strong>Bluetooth BLE</strong> pour associer votre imprimante thermique directement, ou utilisez <strong>App RawBT</strong> si votre imprimante utilise le Bluetooth classique.</li>
-              <li><strong class="text-white">Sur iPhone (Safari / iOS) :</strong> Apple restreint le Bluetooth direct dans les navigateurs. Utilisez <strong>Imprimer</strong> (AirPrint / Wi-Fi) ou <strong>WhatsApp</strong> pour envoyer le bilan, ou ouvrez le site via l'application de navigation <em>Bluefy</em> (compatible Web Bluetooth sur iOS).</li>
-            </ul>
-          </div>
+          <button id="btn-print-thermal-bt" class="btn btn-primary btn-sm flex items-center justify-center gap-2 flex-[2] font-bold text-sm py-2.5">
+            <span>📶</span>
+            <span>Imprimer en Bluetooth</span>
+          </button>
         </div>
       </div>
     `;
@@ -291,13 +255,8 @@ export const ThermalModal = {
     const btnProgram = document.getElementById('btn-type-program');
     const btn58 = document.getElementById('btn-toggle-58mm');
     const btn80 = document.getElementById('btn-toggle-80mm');
-    const btnPrintSys = document.getElementById('btn-print-thermal-sys');
     const btnPrintBt = document.getElementById('btn-print-thermal-bt');
-    const btnPrintRawBT = document.getElementById('btn-print-thermal-rawbt');
     const btnWa = document.getElementById('btn-share-thermal-wa');
-    const btnCopy = document.getElementById('btn-copy-ticket-text');
-    const btnHelp = document.getElementById('btn-toggle-bt-help');
-    const helpBox = document.getElementById('bt-help-box');
 
     const hide = () => this.close();
     closeBtnX?.addEventListener('click', hide);
@@ -335,10 +294,6 @@ export const ThermalModal = {
       this.bindEvents();
     });
 
-    btnHelp?.addEventListener('click', () => {
-      helpBox?.classList.toggle('hidden');
-    });
-
     const getTicketText = () => {
       const coach = stateManager.getCoachProfile();
       if (this.currentReceiptType === 'assessment') {
@@ -350,42 +305,16 @@ export const ThermalModal = {
       }
     };
 
-    btnPrintSys?.addEventListener('click', () => {
-      window.print();
-    });
-
     btnPrintBt?.addEventListener('click', async () => {
       try {
         const plainText = getTicketText();
-        window.App.showToast('Recherche de l\'imprimante Bluetooth...', 'info');
+        window.App.showToast('Connexion à l\'imprimante Bluetooth...', 'info');
         const res = await ThermalPrinter.printViaBluetooth(plainText);
         if (res.success) {
-          window.App.showToast(`Ticket imprimé avec succès (${res.deviceName})`, 'success');
+          window.App.showToast(`Ticket imprimé avec succès !`, 'success');
         }
       } catch (err) {
-        window.App.showToast(err.message || 'Erreur de connexion Bluetooth', 'error');
-        // Ouvrir automatiquement l'aide si erreur
-        helpBox?.classList.remove('hidden');
-      }
-    });
-
-    btnPrintRawBT?.addEventListener('click', () => {
-      try {
-        const plainText = getTicketText();
-        ThermalPrinter.printViaRawBT(plainText);
-        window.App.showToast('Envoi vers l\'imprimante...', 'info');
-      } catch (err) {
-        window.App.showToast('Erreur lors de l\'envoi vers l\'application d\'impression', 'error');
-      }
-    });
-
-    btnCopy?.addEventListener('click', async () => {
-      try {
-        const plainText = getTicketText();
-        await navigator.clipboard.writeText(plainText);
-        window.App.showToast('Texte du ticket copié dans le presse-papier !', 'success');
-      } catch (err) {
-        window.App.showToast('Impossible de copier le texte', 'error');
+        window.App.showToast(err.message || 'Erreur Bluetooth', 'error');
       }
     });
 

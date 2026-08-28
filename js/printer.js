@@ -220,23 +220,12 @@ export const ThermalPrinter = {
     return typeof navigator !== 'undefined' && !!navigator.bluetooth;
   },
 
-  isIOS() {
-    return typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
-  },
-
-  isAndroid() {
-    return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
-  },
-
   /**
-   * Impression Bluetooth Direct (Web Bluetooth BLE pour Android Chrome & Desktop)
+   * Impression Bluetooth Directe pour Imprimantes Thermiques (58mm / 80mm ESC/POS)
    */
   async printViaBluetooth(plainText) {
     if (!this.isBluetoothSupported()) {
-      if (this.isIOS()) {
-        throw new Error('Apple Safari ne permet pas le Bluetooth direct sur iPhone. Utilisez le bouton "Imprimer" (AirPrint / Wi-Fi) ou "WhatsApp" pour partager le ticket.');
-      }
-      throw new Error('Web Bluetooth non supporte par ce navigateur. Veuillez ouvrir l\'application sur Google Chrome (Android) ou utiliser le bouton "App RawBT".');
+      throw new Error("Le Bluetooth n'est pas supporté par ce navigateur. Sur Android, utilisez Google Chrome. Sur iPhone, ouvrez l'application via Bluefy ou utilisez WhatsApp.");
     }
 
     const KNOWN_SERVICES = [
@@ -258,7 +247,7 @@ export const ThermalPrinter = {
       });
 
       if (!device || !device.gatt) {
-        throw new Error('Aucun appareil Bluetooth sélectionné.');
+        throw new Error('Aucun appareil sélectionné.');
       }
 
       const server = await device.gatt.connect();
@@ -276,12 +265,12 @@ export const ThermalPrinter = {
           }
           if (writeChar) break;
         } catch (e) {
-          // Continue to next service
+          // Continuer
         }
       }
 
       if (!writeChar) {
-        throw new Error('Caractéristique d\'écriture introuvable sur cette imprimante. Vérifiez qu\'il s\'agit d\'une imprimante thermique Bluetooth.');
+        throw new Error('Imprimante connectée mais canal d\'impression introuvable.');
       }
 
       const sendChunk = async (bytes) => {
@@ -292,12 +281,12 @@ export const ThermalPrinter = {
         }
       };
 
-      // 1. Commandes ESC/POS : Initialisation + Annuler mode chinois + Sélection page de code CP437 ASCII
+      // 1. Initialisation ESC/POS + Annulation caractères chinois + Standard ASCII
       const initBuffer = new Uint8Array([0x1B, 0x40, 0x1C, 0x2E, 0x1B, 0x74, 0x00]);
       await sendChunk(initBuffer);
-      await new Promise(r => setTimeout(r, 40));
+      await new Promise(r => setTimeout(r, 50));
 
-      // 2. Envoi du texte formaté
+      // 2. Envoi du ticket en paquets de 64 octets
       const cleanText = this.sanitizeForThermal(plainText);
       const encoder = new TextEncoder();
       const data = encoder.encode(cleanText);
@@ -305,35 +294,21 @@ export const ThermalPrinter = {
       const chunkSize = 64;
       for (let i = 0; i < data.length; i += chunkSize) {
         await sendChunk(data.slice(i, i + chunkSize));
-        await new Promise(r => setTimeout(r, 20));
+        await new Promise(r => setTimeout(r, 25));
       }
 
-      // 3. Avance papier (3 lignes) + Cut (si supporté)
-      await sendChunk(new Uint8Array([0x1B, 0x64, 0x03, 0x0A, 0x0A]));
-      await new Promise(r => setTimeout(r, 50));
+      // 3. Avance papier & saut de lignes
+      await sendChunk(new Uint8Array([0x1B, 0x64, 0x04, 0x0A, 0x0A]));
+      await new Promise(r => setTimeout(r, 60));
 
-      return { success: true, deviceName: device.name || 'Imprimante Thermique Bluetooth' };
+      return { success: true, deviceName: device.name || 'Imprimante Bluetooth' };
     } catch (err) {
       console.error('Erreur Bluetooth:', err);
       if (err.name === 'NotFoundError') {
-        throw new Error('Connexion annulée : aucun appareil sélectionné.');
-      } else if (err.name === 'SecurityError') {
-        throw new Error('Accès Bluetooth refusé. Assurez-vous d\'autoriser le Bluetooth dans les paramètres.');
+        throw new Error('Sélection annulée.');
       }
       throw err;
     }
-  },
-
-  /**
-   * Impression via l'application Android RawBT / Bluetooth Print (Bluetooth Classique SPP & BLE)
-   */
-  printViaRawBT(plainText) {
-    const cleanText = this.sanitizeForThermal(plainText);
-    const b64 = btoa(unescape(encodeURIComponent(cleanText)));
-    const rawbtUrl = `rawbt:data:application/octet-stream;base64,${b64}`;
-    
-    // Essaye d'ouvrir l'intent RawBT
-    window.location.href = rawbtUrl;
   },
 
   generateWhatsAppLink(client, assessment, coach) {
