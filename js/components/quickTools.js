@@ -38,15 +38,15 @@ export const QuickTools = {
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
             <label class="label">Poids (kg) *</label>
-            <input type="number" step="0.1" id="qt-weight" placeholder="ex: 78.5" class="input font-bold text-emerald-400" />
+            <input type="number" inputmode="decimal" step="0.1" id="qt-weight" placeholder="ex: 78.5" class="input font-bold text-emerald-400" />
           </div>
           <div>
             <label class="label">Taille (cm) *</label>
-            <input type="number" id="qt-height" placeholder="ex: 175" class="input font-bold" />
+            <input type="number" inputmode="numeric" id="qt-height" placeholder="ex: 175" class="input font-bold" />
           </div>
           <div>
             <label class="label">Âge (ans) *</label>
-            <input type="number" id="qt-age" placeholder="ex: 32" class="input font-bold" />
+            <input type="number" inputmode="numeric" id="qt-age" placeholder="ex: 32" class="input font-bold" />
           </div>
           <div>
             <label class="label">Genre *</label>

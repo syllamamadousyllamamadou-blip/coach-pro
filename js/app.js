@@ -41,7 +41,7 @@ class Application {
     if (params.clientId) this.selectedClientId = params.clientId;
     if (params.subTab) this.selectedSubTab = params.subTab;
 
-    document.querySelectorAll('.nav-link').forEach(link => {
+    document.querySelectorAll('.nav-link, .mobile-nav-btn').forEach(link => {
       const target = link.getAttribute('data-nav');
       if (target === route) {
         link.classList.add('active');

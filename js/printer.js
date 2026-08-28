@@ -216,59 +216,124 @@ export const ThermalPrinter = {
     return this.sanitizeForThermal(out.join('\n'));
   },
 
+  isBluetoothSupported() {
+    return typeof navigator !== 'undefined' && !!navigator.bluetooth;
+  },
+
+  isIOS() {
+    return typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+  },
+
+  isAndroid() {
+    return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+  },
+
+  /**
+   * Impression Bluetooth Direct (Web Bluetooth BLE pour Android Chrome & Desktop)
+   */
   async printViaBluetooth(plainText) {
-    if (!navigator.bluetooth) {
-      throw new Error('Web Bluetooth non supporte par ce navigateur. Utilisez Chrome ou l\'impression système.');
+    if (!this.isBluetoothSupported()) {
+      if (this.isIOS()) {
+        throw new Error('Apple Safari ne permet pas le Bluetooth direct sur iPhone. Utilisez le bouton "Imprimer" (AirPrint / Wi-Fi) ou "WhatsApp" pour partager le ticket.');
+      }
+      throw new Error('Web Bluetooth non supporte par ce navigateur. Veuillez ouvrir l\'application sur Google Chrome (Android) ou utiliser le bouton "App RawBT".');
     }
+
+    const KNOWN_SERVICES = [
+      '000018f0-0000-1000-8000-00805f9b34fb',
+      '0000ffe0-0000-1000-8000-00805f9b34fb',
+      '0000ff00-0000-1000-8000-00805f9b34fb',
+      '0000fee7-0000-1000-8000-00805f9b34fb',
+      '0000af30-0000-1000-8000-00805f9b34fb',
+      '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+      'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+      '00001800-0000-1000-8000-00805f9b34fb',
+      '00001801-0000-1000-8000-00805f9b34fb'
+    ];
 
     try {
       const device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
-        optionalServices: [
-          '000018f0-0000-1000-8000-00805f9b34fb',
-          'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
-          0xFFE0,
-          0x1800
-        ]
+        optionalServices: KNOWN_SERVICES
       });
+
+      if (!device || !device.gatt) {
+        throw new Error('Aucun appareil Bluetooth sélectionné.');
+      }
 
       const server = await device.gatt.connect();
       const services = await server.getPrimaryServices();
       let writeChar = null;
 
       for (const s of services) {
-        const chars = await s.getCharacteristics();
-        for (const c of chars) {
-          if (c.properties.write || c.properties.writeWithoutResponse) {
-            writeChar = c;
-            break;
+        try {
+          const chars = await s.getCharacteristics();
+          for (const c of chars) {
+            if (c.properties.write || c.properties.writeWithoutResponse) {
+              writeChar = c;
+              break;
+            }
           }
+          if (writeChar) break;
+        } catch (e) {
+          // Continue to next service
         }
-        if (writeChar) break;
       }
 
-      if (!writeChar) throw new Error('Caractéristique d\'impression introuvable sur l\'appareil.');
+      if (!writeChar) {
+        throw new Error('Caractéristique d\'écriture introuvable sur cette imprimante. Vérifiez qu\'il s\'agit d\'une imprimante thermique Bluetooth.');
+      }
 
-      // Commandes ESC/POS strictes : Cancel Chinese mode + Select CP437 ASCII
+      const sendChunk = async (bytes) => {
+        if (writeChar.properties.writeWithoutResponse && typeof writeChar.writeValueWithoutResponse === 'function') {
+          await writeChar.writeValueWithoutResponse(bytes);
+        } else {
+          await writeChar.writeValue(bytes);
+        }
+      };
+
+      // 1. Commandes ESC/POS : Initialisation + Annuler mode chinois + Sélection page de code CP437 ASCII
       const initBuffer = new Uint8Array([0x1B, 0x40, 0x1C, 0x2E, 0x1B, 0x74, 0x00]);
-      await writeChar.writeValue(initBuffer);
+      await sendChunk(initBuffer);
+      await new Promise(r => setTimeout(r, 40));
 
+      // 2. Envoi du texte formaté
       const cleanText = this.sanitizeForThermal(plainText);
       const encoder = new TextEncoder();
       const data = encoder.encode(cleanText);
 
-      const chunkSize = 100;
+      const chunkSize = 64;
       for (let i = 0; i < data.length; i += chunkSize) {
-        await writeChar.writeValue(data.slice(i, i + chunkSize));
-        await new Promise(r => setTimeout(r, 25));
+        await sendChunk(data.slice(i, i + chunkSize));
+        await new Promise(r => setTimeout(r, 20));
       }
 
-      await writeChar.writeValue(new Uint8Array([0x1B, 0x64, 0x03]));
-      return { success: true, deviceName: device.name || 'Imprimante Bluetooth' };
+      // 3. Avance papier (3 lignes) + Cut (si supporté)
+      await sendChunk(new Uint8Array([0x1B, 0x64, 0x03, 0x0A, 0x0A]));
+      await new Promise(r => setTimeout(r, 50));
+
+      return { success: true, deviceName: device.name || 'Imprimante Thermique Bluetooth' };
     } catch (err) {
       console.error('Erreur Bluetooth:', err);
+      if (err.name === 'NotFoundError') {
+        throw new Error('Connexion annulée : aucun appareil sélectionné.');
+      } else if (err.name === 'SecurityError') {
+        throw new Error('Accès Bluetooth refusé. Assurez-vous d\'autoriser le Bluetooth dans les paramètres.');
+      }
       throw err;
     }
+  },
+
+  /**
+   * Impression via l'application Android RawBT / Bluetooth Print (Bluetooth Classique SPP & BLE)
+   */
+  printViaRawBT(plainText) {
+    const cleanText = this.sanitizeForThermal(plainText);
+    const b64 = btoa(unescape(encodeURIComponent(cleanText)));
+    const rawbtUrl = `rawbt:data:application/octet-stream;base64,${b64}`;
+    
+    // Essaye d'ouvrir l'intent RawBT
+    window.location.href = rawbtUrl;
   },
 
   generateWhatsAppLink(client, assessment, coach) {

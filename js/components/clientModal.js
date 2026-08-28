@@ -85,11 +85,11 @@ export const ClientModal = {
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label class="label">Âge (ans) *</label>
-              <input type="number" name="age" id="modal-age" value="${client?.age || ''}" placeholder="ex: 32" class="input font-bold" required />
+              <input type="number" inputmode="numeric" name="age" id="modal-age" value="${client?.age || ''}" placeholder="ex: 32" class="input font-bold" required />
             </div>
             <div>
               <label class="label">Téléphone / WhatsApp *</label>
-              <input type="tel" name="phone" value="${client?.phone || ''}" placeholder="+225 07 00 00 00 00" class="input font-semibold" required />
+              <input type="tel" inputmode="tel" name="phone" value="${client?.phone || ''}" placeholder="+225 07 00 00 00 00" class="input font-semibold" required />
             </div>
             <div>
               <label class="label">Email (Optionnel)</label>
@@ -114,7 +114,7 @@ export const ClientModal = {
             </div>
             <div>
               <label class="label">Poids Cible (kg)</label>
-              <input type="number" step="0.5" name="targetWeight" value="${client?.targetWeight || ''}" placeholder="ex: 70" class="input font-mono" />
+              <input type="number" inputmode="decimal" step="0.5" name="targetWeight" value="${client?.targetWeight || ''}" placeholder="ex: 70" class="input font-mono" />
             </div>
             <div>
               <label class="label">Date Cible (Optionnel)</label>
@@ -135,25 +135,25 @@ export const ClientModal = {
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <label class="label">Poids (kg) *</label>
-              <input type="number" step="0.1" name="initialWeight" id="modal-weight" value="${lastAssessment?.weight || ''}" placeholder="ex: 82.5" class="input font-bold text-emerald-400" required />
+              <input type="number" inputmode="decimal" step="0.1" name="initialWeight" id="modal-weight" value="${lastAssessment?.weight || ''}" placeholder="ex: 82.5" class="input font-bold text-emerald-400" required />
             </div>
             <div>
               <label class="label">Taille (cm) *</label>
-              <input type="number" name="height" id="modal-height" value="${lastAssessment?.height || ''}" placeholder="ex: 178" class="input font-bold" required />
+              <input type="number" inputmode="numeric" name="height" id="modal-height" value="${lastAssessment?.height || ''}" placeholder="ex: 178" class="input font-bold" required />
             </div>
             <div>
               <div class="flex items-center justify-between">
                 <label class="label">Gras (%)</label>
                 <span class="text-[10px] text-emerald-400 font-semibold">Auto</span>
               </div>
-              <input type="number" step="0.1" name="fatPct" id="modal-fat" value="${lastAssessment?.fatPct || ''}" placeholder="Calculé auto" class="input font-mono font-bold text-amber-400" />
+              <input type="number" inputmode="decimal" step="0.1" name="fatPct" id="modal-fat" value="${lastAssessment?.fatPct || ''}" placeholder="Calculé auto" class="input font-mono font-bold text-amber-400" />
             </div>
             <div>
               <div class="flex items-center justify-between">
                 <label class="label">Muscle (%)</label>
                 <span class="text-[10px] text-emerald-400 font-semibold">Auto</span>
               </div>
-              <input type="number" step="0.1" name="musclePct" id="modal-muscle" value="${lastAssessment?.musclePct || ''}" placeholder="Calculé auto" class="input font-mono font-bold text-emerald-400" />
+              <input type="number" inputmode="decimal" step="0.1" name="musclePct" id="modal-muscle" value="${lastAssessment?.musclePct || ''}" placeholder="Calculé auto" class="input font-mono font-bold text-emerald-400" />
             </div>
           </div>
 
@@ -163,15 +163,15 @@ export const ClientModal = {
             <div class="grid grid-cols-3 gap-3">
               <div>
                 <label class="label">Tour de Taille (cm)</label>
-                <input type="number" step="0.5" name="waist" value="${lastAssessment?.waist || ''}" placeholder="Facultatif" class="input" />
+                <input type="number" inputmode="decimal" step="0.5" name="waist" value="${lastAssessment?.waist || ''}" placeholder="Facultatif" class="input" />
               </div>
               <div>
                 <label class="label">Tour de Hanches (cm)</label>
-                <input type="number" step="0.5" name="hips" value="${lastAssessment?.hips || ''}" placeholder="Facultatif" class="input" />
+                <input type="number" inputmode="decimal" step="0.5" name="hips" value="${lastAssessment?.hips || ''}" placeholder="Facultatif" class="input" />
               </div>
               <div>
                 <label class="label">Graisse Viscérale</label>
-                <input type="number" name="visceralFat" id="modal-visceral" value="${lastAssessment?.visceralFat || ''}" placeholder="Auto" class="input" />
+                <input type="number" inputmode="numeric" name="visceralFat" id="modal-visceral" value="${lastAssessment?.visceralFat || ''}" placeholder="Auto" class="input" />
               </div>
             </div>
           </div>
@@ -243,7 +243,7 @@ export const ClientModal = {
 
             <div id="wrapper-sessions-count" class="${pkgType === 'duration' ? 'hidden' : ''}">
               <label class="label">Nombre de Séances *</label>
-              <input type="number" name="totalSessions" value="${pkg.totalSessions || 10}" class="input font-bold" />
+              <input type="number" inputmode="numeric" name="totalSessions" value="${pkg.totalSessions || 10}" class="input font-bold" />
             </div>
 
             <div id="wrapper-duration-months" class="${pkgType === 'sessions' ? 'hidden' : ''}">
@@ -266,11 +266,11 @@ export const ClientModal = {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div>
               <label class="label">Tarif Total (FCFA) *</label>
-              <input type="number" step="1000" name="totalAmount" value="${pkg.totalAmount || ''}" placeholder="ex: 150000" class="input font-bold text-emerald-400" required />
+              <input type="number" inputmode="numeric" step="1000" name="totalAmount" value="${pkg.totalAmount || ''}" placeholder="ex: 150000" class="input font-bold text-emerald-400" required />
             </div>
             <div>
               <label class="label">Acompte Versé à l'Inscription (FCFA)</label>
-              <input type="number" step="1000" name="amountPaid" value="${pkg.amountPaid || ''}" placeholder="ex: 100000" class="input font-bold" />
+              <input type="number" inputmode="numeric" step="1000" name="amountPaid" value="${pkg.amountPaid || ''}" placeholder="ex: 100000" class="input font-bold" />
             </div>
           </div>
         </div>

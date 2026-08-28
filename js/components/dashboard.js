@@ -91,13 +91,68 @@ export const Dashboard = {
             </button>
           </div>
         ` : `
-          <div class="glass-card p-5 space-y-4">
+          <div class="glass-card p-4 sm:p-5 space-y-4">
             <div class="flex items-center justify-between pb-2 border-b border-slate-800">
               <h3 class="text-sm font-bold text-white">Clients en Suivi (${totalClients})</h3>
               <button id="btn-see-all-clients" class="text-xs text-emerald-400 hover:underline">Gérer tous les clients →</button>
             </div>
 
-            <div class="overflow-x-auto">
+            <!-- VUE MOBILE (Cartes Tactiles Fluides) -->
+            <div class="block md:hidden space-y-3">
+              ${clients.map(c => {
+                const last = c.history && c.history.length > 0 ? c.history[c.history.length - 1] : null;
+                const pkg = c.package || {};
+                const isDuration = pkg.packageType === 'duration';
+                const sessionsLeft = !isDuration ? Math.max(0, (pkg.totalSessions || 0) - (pkg.sessionsUsed || 0)) : null;
+                const balanceDue = pkg.balanceDue || 0;
+
+                return `
+                  <div class="sub-card p-3.5 space-y-3 border border-slate-800">
+                    <div class="flex items-start justify-between gap-2">
+                      <div>
+                        <strong class="text-white text-sm font-bold block">${c.firstName} ${c.lastName}</strong>
+                        <span class="text-[11px] text-slate-400">${c.residence ? `${c.residence}` : (c.phone || '')}</span>
+                      </div>
+                      <span class="badge badge-neutral text-[10px]">${c.mainGoal}</span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 bg-[#0c1220] p-2 rounded-lg text-center text-xs">
+                      <div>
+                        <span class="text-[10px] text-slate-500 block">Poids</span>
+                        <span class="font-bold text-white font-mono">${last ? `${last.weight} kg` : '--'}</span>
+                      </div>
+                      <div>
+                        <span class="text-[10px] text-slate-500 block">Forfait</span>
+                        <span class="font-bold ${isDuration ? 'text-emerald-400' : (sessionsLeft <= 2 ? 'text-amber-400' : 'text-emerald-400')} font-mono">
+                          ${isDuration ? `${pkg.durationMonths || 1}M` : `${sessionsLeft} rest.`}
+                        </span>
+                      </div>
+                      <div>
+                        <span class="text-[10px] text-slate-500 block">Solde</span>
+                        <span class="font-bold ${balanceDue > 0 ? 'text-amber-400' : 'text-slate-400'} font-mono text-[11px]">
+                          ${balanceDue > 0 ? Calculations.formatFCFA(balanceDue) : 'Réglé'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 pt-1">
+                      <button class="btn btn-primary btn-xs flex-1 py-2 font-bold" data-action="open-client" data-client-id="${c.id}">
+                        Dossier
+                      </button>
+                      <button class="btn btn-secondary btn-xs flex-1 py-2" data-action="print-bilan" data-client-id="${c.id}">
+                        Ticket Bilan
+                      </button>
+                      <button class="btn btn-outline btn-xs px-2.5 py-2" data-action="print-sub" data-client-id="${c.id}">
+                        Reçu
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <!-- VUE DESKTOP (Tableau classique) -->
+            <div class="hidden md:block overflow-x-auto">
               <table class="w-full text-left text-xs text-slate-300">
                 <thead class="bg-[#0c1220] text-slate-400 uppercase font-semibold border-b border-slate-800">
                   <tr>

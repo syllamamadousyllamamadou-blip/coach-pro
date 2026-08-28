@@ -66,51 +66,57 @@ export const ClientDetail = {
               </div>
             </div>
 
-            <!-- Boutons d'Action & 3 Reçus Thermiques -->
-            <div class="flex flex-wrap items-center gap-2">
-              <button id="btn-print-bilan-action" class="btn btn-secondary btn-sm" title="Imprimer le Bilan Corporel">
-                Bilan
+            <!-- Boutons d'Action & 3 Reçus Thermiques Responsive -->
+            <div class="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2">
+              <button id="btn-print-bilan-action" class="btn btn-secondary btn-xs sm:btn-sm flex items-center justify-center gap-1" title="Imprimer le Bilan Corporel">
+                <span>📄</span>
+                <span>Bilan</span>
               </button>
-              <button id="btn-print-prog-action" class="btn btn-secondary btn-sm" title="Imprimer le Programme">
-                Programme
+              <button id="btn-print-prog-action" class="btn btn-secondary btn-xs sm:btn-sm flex items-center justify-center gap-1" title="Imprimer le Programme">
+                <span>🏋️</span>
+                <span>Prog.</span>
               </button>
-              <button id="btn-print-abonnement-action" class="btn btn-secondary btn-sm" title="Imprimer le Reçu Forfait">
-                Reçu Forfait
+              <button id="btn-print-abonnement-action" class="btn btn-secondary btn-xs sm:btn-sm flex items-center justify-center gap-1" title="Imprimer le Reçu Forfait">
+                <span>🧾</span>
+                <span>Reçu</span>
               </button>
-              <button id="btn-whatsapp-action" class="btn btn-whatsapp btn-sm">
-                WhatsApp
+              <button id="btn-whatsapp-action" class="btn btn-whatsapp btn-xs sm:btn-sm flex items-center justify-center gap-1">
+                <span>💬</span>
+                <span>WhatsApp</span>
               </button>
-              <button id="btn-edit-client-action" class="btn btn-secondary btn-sm">
-                Modifier
+              <button id="btn-edit-client-action" class="btn btn-outline btn-xs sm:btn-sm flex items-center justify-center gap-1">
+                <span>✏️</span>
+                <span>Modifier</span>
               </button>
-              <button id="btn-delete-client-action" class="btn btn-danger btn-sm" title="Supprimer">
-                Supprimer
+              <button id="btn-delete-client-action" class="btn btn-danger btn-xs sm:btn-sm flex items-center justify-center gap-1" title="Supprimer">
+                <span>🗑️</span>
+                <span>Suppr.</span>
               </button>
             </div>
           </div>
 
-          <!-- Onglets Sobres -->
-          <div class="flex items-center gap-2 overflow-x-auto pt-3 border-t border-slate-800">
+          <!-- Onglets Mobiles avec Défilement Fluide -->
+          <div class="sub-tabs-bar pt-3 border-t border-slate-800">
             <button class="tab-sub-btn ${this.currentTab === 'overview' ? 'active' : ''}" data-tab="overview">
               Bilan & Mesures
             </button>
             <button class="tab-sub-btn ${this.currentTab === 'program' ? 'active' : ''}" data-tab="program">
-              Programme d'Entraînement
+              Programme
             </button>
             <button class="tab-sub-btn ${this.currentTab === 'attendance' ? 'active' : ''}" data-tab="attendance">
-              Pointage & Séances
+              Pointage (${client.package?.sessionsUsed || 0})
             </button>
             <button class="tab-sub-btn ${this.currentTab === 'comparator' ? 'active' : ''}" data-tab="comparator">
-              Comparateur Avant / Après
+              Comparateur
             </button>
             <button class="tab-sub-btn ${this.currentTab === 'bodyComp' ? 'active' : ''}" data-tab="bodyComp">
               Pesées (${client.history?.length || 0})
             </button>
             <button class="tab-sub-btn ${this.currentTab === 'assessment21' ? 'active' : ''}" data-tab="assessment21">
-              Santé 21 Facteurs
+              Santé 21F
             </button>
             <button class="tab-sub-btn ${this.currentTab === 'billing' ? 'active' : ''}" data-tab="billing">
-              Forfait & Paiements
+              Forfait & FCFA
             </button>
           </div>
         </div>

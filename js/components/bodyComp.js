@@ -84,29 +84,29 @@ export const BodyComp = {
                 </div>
                 <div>
                   <label class="label">Poids (kg) *</label>
-                  <input type="number" step="0.1" name="weight" id="input-new-weight" placeholder="ex: 81.5" class="input font-bold text-emerald-400" required />
+                  <input type="number" inputmode="decimal" step="0.1" name="weight" id="input-new-weight" placeholder="ex: 81.5" class="input font-bold text-emerald-400" required />
                 </div>
               </div>
 
               <div class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="label">Taille (cm)</label>
-                  <input type="number" name="height" id="input-new-height" value="${client.history[0]?.height || 175}" class="input" required />
+                  <input type="number" inputmode="numeric" name="height" id="input-new-height" value="${client.history[0]?.height || 175}" class="input" required />
                 </div>
                 <div>
                   <label class="label">Masse Grasse (%)</label>
-                  <input type="number" step="0.1" name="fatPct" placeholder="ex: 21.0" class="input" />
+                  <input type="number" inputmode="decimal" step="0.1" name="fatPct" placeholder="ex: 21.0" class="input" />
                 </div>
               </div>
 
               <div class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="label">Masse Musculaire (%)</label>
-                  <input type="number" step="0.1" name="musclePct" placeholder="ex: 39.0" class="input" />
+                  <input type="number" inputmode="decimal" step="0.1" name="musclePct" placeholder="ex: 39.0" class="input" />
                 </div>
                 <div>
                   <label class="label">Tour de Taille (cm)</label>
-                  <input type="number" step="0.5" name="waist" placeholder="ex: 86.5" class="input" />
+                  <input type="number" inputmode="decimal" step="0.5" name="waist" placeholder="ex: 86.5" class="input" />
                 </div>
               </div>
 

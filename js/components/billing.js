@@ -81,7 +81,7 @@ export const Billing = {
             </div>
             <div>
               <label class="label">Montant Versé (FCFA) *</label>
-              <input type="number" step="1000" id="pay-amount" placeholder="ex: 50000" class="input text-xs font-bold text-emerald-400" required />
+              <input type="number" inputmode="numeric" step="1000" id="pay-amount" placeholder="ex: 50000" class="input text-xs font-bold text-emerald-400" required />
             </div>
             <div>
               <label class="label">Mode de Paiement</label>
