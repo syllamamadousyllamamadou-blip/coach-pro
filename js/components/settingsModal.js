@@ -82,15 +82,27 @@ export const SettingsModal = {
               <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                 <span>📶</span> Imprimante Bluetooth
               </h4>
+              ${(() => {
+                const dev = ThermalPrinter.getConnectedDeviceName() || (typeof localStorage !== 'undefined' ? localStorage.getItem('coach_last_bt_device') : null);
+                return dev ? `<span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 font-semibold">${dev}</span>` : '';
+              })()}
             </div>
             <p class="text-[11px] text-slate-400">
-              Assurez-vous que votre imprimante de poche est allumée avant de lancer le test :
+              Une fois associée dans Bluefy, votre imprimante reste mémorisée pour toutes vos sessions :
             </p>
-            <div class="pt-1">
-              <button type="button" id="btn-test-bt-settings" class="btn btn-secondary btn-sm w-full flex items-center justify-center gap-2 font-semibold">
+            <div class="flex items-center gap-2 pt-1">
+              <button type="button" id="btn-test-bt-settings" class="btn btn-secondary btn-sm flex-1 flex items-center justify-center gap-2 font-semibold">
                 <span>🖨️</span>
-                <span>Tester l'imprimante Bluetooth</span>
+                <span>Tester l'imprimante</span>
               </button>
+              ${(() => {
+                const dev = ThermalPrinter.getConnectedDeviceName() || (typeof localStorage !== 'undefined' ? localStorage.getItem('coach_last_bt_device') : null);
+                return dev ? `
+                  <button type="button" id="btn-disconnect-bt-settings" class="btn btn-outline btn-sm text-xs text-slate-400 hover:text-white">
+                    Dissocier
+                  </button>
+                ` : '';
+              })()}
             </div>
           </div>
 
@@ -116,12 +128,20 @@ export const SettingsModal = {
     const form = document.getElementById('form-coach-profile');
     const resetBtn = document.getElementById('btn-reset-app-data');
     const testBtBtn = document.getElementById('btn-test-bt-settings');
+    const disconnectBtBtn = document.getElementById('btn-disconnect-bt-settings');
 
     const hide = () => this.close();
     closeBtnX?.addEventListener('click', hide);
     closeBtn?.addEventListener('click', hide);
     modal?.addEventListener('click', (e) => {
       if (e.target === modal) hide();
+    });
+
+    disconnectBtBtn?.addEventListener('click', () => {
+      ThermalPrinter.forgetDevice();
+      window.App.showToast('Imprimante dissociée', 'info');
+      this.render();
+      this.bindEvents();
     });
 
     const getTestText = () => {

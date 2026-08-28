@@ -233,6 +233,21 @@ export const ThermalModal = {
 
         <!-- Actions d'Impression Bluetooth, AirPrint & Partage -->
         <div class="space-y-2 pt-3 border-t border-slate-800">
+          ${(() => {
+            const connectedDevice = ThermalPrinter.getConnectedDeviceName() || (typeof localStorage !== 'undefined' ? localStorage.getItem('coach_last_bt_device') : null);
+            return connectedDevice ? `
+              <div class="flex items-center justify-between text-[11px] text-slate-400 px-1 pb-1">
+                <span class="text-emerald-400 font-semibold flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+                  ${connectedDevice}
+                </span>
+                <button type="button" id="btn-change-bt-device" class="text-[11px] text-slate-400 hover:text-white underline cursor-pointer">
+                  Changer d'imprimante
+                </button>
+              </div>
+            ` : '';
+          })()}
+
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button id="btn-print-thermal-bt" class="btn btn-primary btn-sm flex items-center justify-center gap-1.5 font-bold text-xs sm:text-sm py-2.5">
               <span>📶</span>
@@ -265,6 +280,7 @@ export const ThermalModal = {
     const btnPrintBt = document.getElementById('btn-print-thermal-bt');
     const btnAirPrint = document.getElementById('btn-print-thermal-airprint');
     const btnWa = document.getElementById('btn-share-thermal-wa');
+    const btnChangeBt = document.getElementById('btn-change-bt-device');
 
     const hide = () => this.close();
     closeBtnX?.addEventListener('click', hide);
@@ -343,6 +359,23 @@ export const ThermalModal = {
         } else {
           window.App.showToast('Bluetooth non disponible sur ce navigateur.', 'error');
         }
+      }
+    });
+
+    btnChangeBt?.addEventListener('click', async () => {
+      try {
+        ThermalPrinter.forgetDevice();
+        window.App.showToast('Sélection d\'une nouvelle imprimante...', 'info');
+        const plainText = getTicketText();
+        const res = await ThermalPrinter.printViaBluetooth(plainText, true);
+        if (res.success) {
+          window.App.showToast(`Nouvelle imprimante mémorisée : ${res.deviceName}`, 'success');
+          this.renderModal();
+          this.bindEvents();
+        }
+      } catch (err) {
+        this.renderModal();
+        this.bindEvents();
       }
     });
 
