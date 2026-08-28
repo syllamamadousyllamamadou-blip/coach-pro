@@ -231,17 +231,24 @@ export const ThermalModal = {
           </div>
         </div>
 
-        <!-- Actions d'Impression Bluetooth & Partage -->
-        <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-800">
-          <button id="btn-share-thermal-wa" class="btn btn-whatsapp btn-sm flex items-center justify-center gap-1.5 flex-1">
-            <span>💬</span>
-            <span>WhatsApp</span>
-          </button>
+        <!-- Actions d'Impression Bluetooth, AirPrint & Partage -->
+        <div class="space-y-2 pt-3 border-t border-slate-800">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button id="btn-print-thermal-bt" class="btn btn-primary btn-sm flex items-center justify-center gap-1.5 font-bold text-xs sm:text-sm py-2.5">
+              <span>📶</span>
+              <span>Bluetooth</span>
+            </button>
 
-          <button id="btn-print-thermal-bt" class="btn btn-primary btn-sm flex items-center justify-center gap-2 flex-[2] font-bold text-sm py-2.5">
-            <span>📶</span>
-            <span>Imprimer en Bluetooth</span>
-          </button>
+            <button id="btn-print-thermal-airprint" class="btn btn-secondary btn-sm flex items-center justify-center gap-1.5 text-xs sm:text-sm py-2.5">
+              <span>📄</span>
+              <span>Imprimer (AirPrint)</span>
+            </button>
+
+            <button id="btn-share-thermal-wa" class="btn btn-whatsapp btn-sm flex items-center justify-center gap-1.5 text-xs sm:text-sm py-2.5">
+              <span>💬</span>
+              <span>WhatsApp</span>
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -256,6 +263,7 @@ export const ThermalModal = {
     const btn58 = document.getElementById('btn-toggle-58mm');
     const btn80 = document.getElementById('btn-toggle-80mm');
     const btnPrintBt = document.getElementById('btn-print-thermal-bt');
+    const btnAirPrint = document.getElementById('btn-print-thermal-airprint');
     const btnWa = document.getElementById('btn-share-thermal-wa');
 
     const hide = () => this.close();
@@ -317,23 +325,29 @@ export const ThermalModal = {
             return;
           }
         } catch (err) {
-          console.warn('Tentative Bluetooth BLE terminée, bascule automatique:', err);
-          // Si l'imprimante utilise le Bluetooth Classique SPP sur Android
+          console.warn('Bluetooth direct terminé:', err);
           if (/Android/i.test(navigator.userAgent)) {
-            window.App.showToast('Envoi vers l\'imprimante Bluetooth...', 'info');
+            window.App.showToast('Envoi vers l\'imprimante Bluetooth Android...', 'info');
             ThermalPrinter.printViaAndroidBluetooth(plainText);
             return;
           }
           window.App.showToast(err.message || 'Erreur Bluetooth', 'error');
         }
       } else {
-        if (/Android/i.test(navigator.userAgent)) {
+        // Sur iPhone Safari
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+          window.App.showToast('Sur iPhone : ouvrez le site dans l\'app gratuite Bluefy pour le Bluetooth direct, ou utilisez le bouton Imprimer (AirPrint).', 'info');
+        } else if (/Android/i.test(navigator.userAgent)) {
           window.App.showToast('Envoi vers l\'imprimante Bluetooth...', 'info');
           ThermalPrinter.printViaAndroidBluetooth(plainText);
         } else {
-          window.App.showToast('Sur iPhone, utilisez WhatsApp pour partager le bilan ou ouvrez l\'app via Bluefy pour le Bluetooth.', 'info');
+          window.App.showToast('Bluetooth non disponible sur ce navigateur.', 'error');
         }
       }
+    });
+
+    btnAirPrint?.addEventListener('click', () => {
+      window.print();
     });
 
     btnWa?.addEventListener('click', () => {
