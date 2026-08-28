@@ -141,14 +141,31 @@ export const SettingsModal = {
     };
 
     testBtBtn?.addEventListener('click', async () => {
-      try {
-        window.App.showToast('Connexion à l\'imprimante Bluetooth...', 'info');
-        const res = await ThermalPrinter.printViaBluetooth(getTestText());
-        if (res.success) {
-          window.App.showToast(`Test d'impression réussi !`, 'success');
+      const testText = getTestText();
+      if (ThermalPrinter.isBluetoothSupported()) {
+        try {
+          window.App.showToast('Connexion à l\'imprimante Bluetooth...', 'info');
+          const res = await ThermalPrinter.printViaBluetooth(testText);
+          if (res.success) {
+            window.App.showToast('Test d\'impression réussi !', 'success');
+            return;
+          }
+        } catch (err) {
+          console.warn('Tentative Bluetooth BLE terminée, bascule automatique:', err);
+          if (/Android/i.test(navigator.userAgent)) {
+            window.App.showToast('Envoi du test à l\'imprimante...', 'info');
+            ThermalPrinter.printViaAndroidBluetooth(testText);
+            return;
+          }
+          window.App.showToast(err.message || 'Erreur Bluetooth', 'error');
         }
-      } catch (err) {
-        window.App.showToast(err.message || 'Erreur Bluetooth', 'error');
+      } else {
+        if (/Android/i.test(navigator.userAgent)) {
+          window.App.showToast('Envoi du test à l\'imprimante...', 'info');
+          ThermalPrinter.printViaAndroidBluetooth(testText);
+        } else {
+          window.App.showToast('Sur iPhone, ouvrez l\'app via Bluefy pour le Bluetooth.', 'info');
+        }
       }
     });
 

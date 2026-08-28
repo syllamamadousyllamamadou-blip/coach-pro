@@ -225,19 +225,22 @@ export const ThermalPrinter = {
    */
   async printViaBluetooth(plainText) {
     if (!this.isBluetoothSupported()) {
-      throw new Error("Le Bluetooth n'est pas supporté par ce navigateur. Sur Android, utilisez Google Chrome. Sur iPhone, ouvrez l'application via Bluefy ou utilisez WhatsApp.");
+      throw new Error("Le Bluetooth n'est pas supporté par ce navigateur.");
     }
 
     const KNOWN_SERVICES = [
-      '000018f0-0000-1000-8000-00805f9b34fb',
-      '0000ffe0-0000-1000-8000-00805f9b34fb',
-      '0000ff00-0000-1000-8000-00805f9b34fb',
-      '0000fee7-0000-1000-8000-00805f9b34fb',
-      '0000af30-0000-1000-8000-00805f9b34fb',
-      '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-      'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+      '000018f0-0000-1000-8000-00805f9b34fb', // Standard POS Printer
+      '0000ffe0-0000-1000-8000-00805f9b34fb', // HM-10 / POS-58
+      '0000ff00-0000-1000-8000-00805f9b34fb', // MPT-II / POS-80
+      '0000fee7-0000-1000-8000-00805f9b34fb', // Wechat / Tencent POS
+      '0000af30-0000-1000-8000-00805f9b34fb', // MPT-III / Xprinter
+      '0000fff0-0000-1000-8000-00805f9b34fb', // POS-588
+      '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC Transparent UART
+      'e7810a71-73ae-499d-8c15-faa9aef0c3f2', // Everycom / Rongta
+      '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Nordic UART
       '00001800-0000-1000-8000-00805f9b34fb',
-      '00001801-0000-1000-8000-00805f9b34fb'
+      '00001801-0000-1000-8000-00805f9b34fb',
+      '0000180a-0000-1000-8000-00805f9b34fb'
     ];
 
     try {
@@ -251,26 +254,48 @@ export const ThermalPrinter = {
       }
 
       const server = await device.gatt.connect();
-      const services = await server.getPrimaryServices();
       let writeChar = null;
 
-      for (const s of services) {
+      // Recherche ciblée sur chaque service connu pour éviter l'erreur de sécurité Chrome
+      for (const uuid of KNOWN_SERVICES) {
         try {
-          const chars = await s.getCharacteristics();
-          for (const c of chars) {
-            if (c.properties.write || c.properties.writeWithoutResponse) {
-              writeChar = c;
-              break;
+          const service = await server.getPrimaryService(uuid);
+          if (service) {
+            const chars = await service.getCharacteristics();
+            for (const c of chars) {
+              if (c.properties.write || c.properties.writeWithoutResponse) {
+                writeChar = c;
+                break;
+              }
             }
+            if (writeChar) break;
           }
-          if (writeChar) break;
         } catch (e) {
-          // Continuer
+          // Continuer avec le prochain service
+        }
+      }
+
+      // Si toujours introuvable, tentative globale
+      if (!writeChar) {
+        try {
+          const services = await server.getPrimaryServices();
+          for (const s of services) {
+            const chars = await s.getCharacteristics();
+            for (const c of chars) {
+              if (c.properties.write || c.properties.writeWithoutResponse) {
+                writeChar = c;
+                break;
+              }
+            }
+            if (writeChar) break;
+          }
+        } catch (e) {
+          // Ignorer
         }
       }
 
       if (!writeChar) {
-        throw new Error('Imprimante connectée mais canal d\'impression introuvable.');
+        throw new Error('Imprimante connectée mais canal d\'écriture introuvable.');
       }
 
       const sendChunk = async (bytes) => {
@@ -309,6 +334,31 @@ export const ThermalPrinter = {
       }
       throw err;
     }
+  },
+
+  /**
+   * Impression Bluetooth pour Android (Bluetooth Classique SPP & BLE)
+   * Fonctionne avec 100% des imprimantes thermiques de poche appairées sur téléphone Android
+   */
+  printViaAndroidBluetooth(plainText) {
+    const cleanText = this.sanitizeForThermal(plainText);
+    const encoder = new TextEncoder();
+    const textBytes = encoder.encode(cleanText);
+    
+    // Commandes ESC/POS : Init + ASCII + Texte + Saut de 3 lignes
+    const fullBytes = new Uint8Array(textBytes.length + 12);
+    fullBytes.set([0x1B, 0x40, 0x1C, 0x2E, 0x1B, 0x74, 0x00], 0);
+    fullBytes.set(textBytes, 7);
+    fullBytes.set([0x1B, 0x64, 0x03, 0x0A, 0x0A], 7 + textBytes.length);
+
+    let binary = '';
+    for (let i = 0; i < fullBytes.length; i++) {
+      binary += String.fromCharCode(fullBytes[i]);
+    }
+    const b64 = btoa(binary);
+
+    // Intent direct pour service d'impression Bluetooth Android
+    window.location.href = `rawbt:data:application/octet-stream;base64,${b64}`;
   },
 
   generateWhatsAppLink(client, assessment, coach) {

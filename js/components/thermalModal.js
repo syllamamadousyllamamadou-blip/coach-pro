@@ -306,15 +306,33 @@ export const ThermalModal = {
     };
 
     btnPrintBt?.addEventListener('click', async () => {
-      try {
-        const plainText = getTicketText();
-        window.App.showToast('Connexion à l\'imprimante Bluetooth...', 'info');
-        const res = await ThermalPrinter.printViaBluetooth(plainText);
-        if (res.success) {
-          window.App.showToast(`Ticket imprimé avec succès !`, 'success');
+      const plainText = getTicketText();
+
+      if (ThermalPrinter.isBluetoothSupported()) {
+        try {
+          window.App.showToast('Connexion à l\'imprimante Bluetooth...', 'info');
+          const res = await ThermalPrinter.printViaBluetooth(plainText);
+          if (res.success) {
+            window.App.showToast('Ticket imprimé avec succès !', 'success');
+            return;
+          }
+        } catch (err) {
+          console.warn('Tentative Bluetooth BLE terminée, bascule automatique:', err);
+          // Si l'imprimante utilise le Bluetooth Classique SPP sur Android
+          if (/Android/i.test(navigator.userAgent)) {
+            window.App.showToast('Envoi vers l\'imprimante Bluetooth...', 'info');
+            ThermalPrinter.printViaAndroidBluetooth(plainText);
+            return;
+          }
+          window.App.showToast(err.message || 'Erreur Bluetooth', 'error');
         }
-      } catch (err) {
-        window.App.showToast(err.message || 'Erreur Bluetooth', 'error');
+      } else {
+        if (/Android/i.test(navigator.userAgent)) {
+          window.App.showToast('Envoi vers l\'imprimante Bluetooth...', 'info');
+          ThermalPrinter.printViaAndroidBluetooth(plainText);
+        } else {
+          window.App.showToast('Sur iPhone, utilisez WhatsApp pour partager le bilan ou ouvrez l\'app via Bluefy pour le Bluetooth.', 'info');
+        }
       }
     });
 
