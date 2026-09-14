@@ -23,6 +23,7 @@ DEBUG_KEYSTORE = os.path.expanduser('~/.android/debug.keystore')
 
 ZIPALIGN_BIN = '/Users/mac/Android/sdk/build-tools/34.0.0/zipalign'
 APKSIGNER_BIN = '/Users/mac/Android/sdk/build-tools/34.0.0/apksigner'
+JARSIGNER_BIN = '/Users/mac/tools/jdk-17/Contents/Home/bin/jarsigner'
 
 # Strict DAG Module Order
 MODULE_FILES = [
@@ -111,24 +112,42 @@ def rebuild_apk():
                     rel_p = os.path.relpath(full_p, extracted_apk)
                     z_out.write(full_p, rel_p)
 
-        # 4. Zipalign
+        # 4. Sign v1 JAR Signature with jarsigner
+        if os.path.exists(JARSIGNER_BIN) and os.path.exists(DEBUG_KEYSTORE):
+            jar_cmd = [
+                JARSIGNER_BIN,
+                '-sigalg', 'SHA256withRSA',
+                '-digestalg', 'SHA-256',
+                '-keystore', DEBUG_KEYSTORE,
+                '-storepass', 'android',
+                '-keypass', 'android',
+                unaligned_apk,
+                'androiddebugkey'
+            ]
+            subprocess.run(jar_cmd, check=True)
+
+        # 5. Zipalign
         if os.path.exists(ZIPALIGN_BIN):
             subprocess.run([ZIPALIGN_BIN, '-f', '-p', '4', unaligned_apk, aligned_apk], check=True)
         else:
             shutil.copy2(unaligned_apk, aligned_apk)
 
-        # 5. Sign with apksigner
+        # 6. Sign with apksigner (v1 + v2 + v3 full compatibility)
         if os.path.exists(APKSIGNER_BIN) and os.path.exists(DEBUG_KEYSTORE):
             sign_cmd = [
                 APKSIGNER_BIN, 'sign',
                 '--ks', DEBUG_KEYSTORE,
                 '--ks-pass', 'pass:android',
                 '--key-pass', 'pass:android',
+                '--v1-signing-enabled', 'true',
+                '--v2-signing-enabled', 'true',
+                '--v3-signing-enabled', 'true',
+                '--v4-signing-enabled', 'false',
                 '--out', OUTPUT_APK,
                 aligned_apk
             ]
             subprocess.run(sign_cmd, check=True)
-            print(f"[✓] coachpro.apk signed successfully with apksigner! ({os.path.getsize(OUTPUT_APK) / (1024*1024):.2f} MB)")
+            print(f"[✓] coachpro.apk signed with v1+v2+v3 schemes! ({os.path.getsize(OUTPUT_APK) / (1024*1024):.2f} MB)")
         else:
             shutil.copy2(aligned_apk, OUTPUT_APK)
             print(f"[✓] coachpro.apk packaged! ({os.path.getsize(OUTPUT_APK) / (1024*1024):.2f} MB)")
