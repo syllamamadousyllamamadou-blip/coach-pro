@@ -247,7 +247,7 @@ export const LicenseManager = {
     const expectedDevHash = this.getDeviceShortHash(cleanDevId);
 
     // Clé universelle de secours du créateur
-    if (cleanInput === 'KEY-COACH-PRO-MASTER-2026-AFRICA' || cleanInput === 'CP-MASTER-LIFETIME-2026-AFRICA') {
+    if (cleanInput === '5008' || cleanInput === 'MASTER2026' || cleanInput === 'KEY-COACH-PRO-MASTER-2026-AFRICA' || cleanInput === 'CP-MASTER-LIFETIME-2026-AFRICA') {
       return {
         valid: true,
         type: 'MASTER',
