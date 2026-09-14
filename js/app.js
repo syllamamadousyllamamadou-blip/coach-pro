@@ -1,5 +1,7 @@
 /**
  * app.js - Contrôleur Principal & Routeur COACH PRO
+ * Intègre la Sécurité PIN 5008, la Licence, la Comptabilité, le Scanner QR,
+ * la To-Do list, les Photos et l'Impression Bluetooth MPT.
  */
 
 import { stateManager } from './state.js';
@@ -10,7 +12,13 @@ import { ClientModal } from './components/clientModal.js';
 import { ThermalModal } from './components/thermalModal.js';
 import { QuickTools } from './components/quickTools.js';
 import { SettingsModal } from './components/settingsModal.js';
+import { Accounting } from './components/accounting.js';
+import { QRScannerComponent } from './components/qrScanner.js';
+import { ContractModal } from './components/contractModal.js';
+import { TodoList } from './components/todoList.js';
 import { ThermalPrinter } from './printer.js';
+import { PinLock } from './security/pinLock.js';
+import { LicenseManager } from './security/license.js';
 
 class Application {
   constructor() {
@@ -25,15 +33,26 @@ class Application {
     this.initialized = true;
 
     try {
-      this.bindGlobalNavigation();
-      this.renderCurrentView();
-
-      stateManager.subscribe(() => {
-        this.renderCurrentView();
+      // 1. Contrôle de Licence Cryptographique (Essai 5j, 1 Mois, 1 An, À Vie)
+      LicenseManager.init(() => {
+        // 2. Verrouillage PIN d'accès sécurisé
+        PinLock.init(() => {
+          this.startApp();
+        });
       });
     } catch (err) {
       console.error('Erreur initialisation COACH PRO:', err);
+      this.startApp();
     }
+  }
+
+  startApp() {
+    this.bindGlobalNavigation();
+    this.renderCurrentView();
+
+    stateManager.subscribe(() => {
+      this.renderCurrentView();
+    });
   }
 
   navigateTo(route, params = {}) {
@@ -51,7 +70,7 @@ class Application {
     });
 
     this.renderCurrentView();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo?.({ top: 0, behavior: 'smooth' });
   }
 
   renderCurrentView() {
@@ -66,6 +85,9 @@ class Application {
         case 'clientDetail':
           ClientDetail.render(mainContainer, this.selectedClientId, this.selectedSubTab);
           break;
+        case 'accounting':
+          Accounting.render(mainContainer);
+          break;
         case 'dashboard':
         default:
           Dashboard.render(mainContainer);
@@ -77,7 +99,7 @@ class Application {
         <div class="glass-card p-8 text-center space-y-4">
           <h2 class="text-lg font-bold text-white">Tableau de Bord COACH PRO</h2>
           <p class="text-xs text-slate-400">Cliquez ci-dessous pour actualiser le tableau de bord :</p>
-          <button onclick="window.App.navigateTo('dashboard')" class="btn btn-primary btn-sm">Afficher le Tableau de Bord</button>
+          <button onclick="window.App.navigateTo('dashboard')" class="btn btn-primary btn-sm font-bold">Afficher le Tableau de Bord</button>
         </div>
       `;
     }
@@ -109,6 +131,14 @@ class Application {
     SettingsModal.open();
   }
 
+  openQRScanner() {
+    QRScannerComponent.openModal();
+  }
+
+  openContractModal(clientId) {
+    ContractModal.open(clientId);
+  }
+
   sendWhatsAppToClient(clientId, assessment = null) {
     const client = stateManager.getClientById(clientId);
     if (!client) return;
@@ -123,12 +153,12 @@ class Application {
     if (!container) return;
 
     const toast = document.createElement('div');
-    const colorClass = type === 'success' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
-                       type === 'error' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' : 'bg-slate-800 text-slate-200 border-slate-700';
+    const colorClass = type === 'success' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-emerald-500/10' :
+                       type === 'error' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-rose-500/10' : 'bg-slate-800 text-slate-200 border-slate-700';
     
-    toast.className = `p-3 rounded-lg border ${colorClass} text-xs font-semibold shadow-xl flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0`;
+    toast.className = `p-3.5 rounded-xl border ${colorClass} text-xs font-bold shadow-2xl flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 backdrop-blur-md`;
     toast.innerHTML = `
-      <span>${type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️'}</span>
+      <span class="text-sm">${type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️'}</span>
       <span>${message}</span>
     `;
 
@@ -160,22 +190,28 @@ class Application {
       this.openQuickToolsModal();
     });
 
-    // Enregistrement Service Worker pour PWA / Mode Application Mobile
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => {
-          console.log('ServiceWorker registration error:', err);
-        });
-      });
-    }
+    document.getElementById('header-btn-scan-qr')?.addEventListener('click', () => {
+      this.openQRScanner();
+    });
   }
 }
 
+// Instance globale
 window.App = new Application();
+window.ThermalPrinter = ThermalPrinter;
+window.PinLock = PinLock;
+window.LicenseManager = LicenseManager;
+window.ThermalModal = ThermalModal;
+window.ContractModal = ContractModal;
+window.QRScannerComponent = QRScannerComponent;
+window.TodoList = TodoList;
+window.stateManager = stateManager;
 
-// Initialisation immédiate et sécurisée (fonctionne même si DOMContentLoaded a déjà eu lieu)
+// Démarrage robuste & infaillible (Web, Mobile, PWA & Android WebView)
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => window.App.init());
+  document.addEventListener('DOMContentLoaded', () => {
+    window.App.init();
+  });
 } else {
   window.App.init();
 }

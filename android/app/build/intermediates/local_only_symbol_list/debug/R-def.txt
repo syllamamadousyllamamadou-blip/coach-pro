@@ -1,0 +1,14 @@
+R_DEF: Internal format may change without notice
+local
+color accent
+color bg_dark
+color card_dark
+color primary
+color primary_dark
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+mipmap ic_launcher
+string app_name
+style Theme.CoachPro
+xml backup_rules
+xml data_extraction_rules

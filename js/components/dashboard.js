@@ -1,24 +1,66 @@
 /**
- * dashboard.js - Tableau de Bord COACH PRO
- * Sobre, sans fausses données pré-remplies, et adapté aux informations réelles du coach.
+ * dashboard.js - Tableau de Bord Intelligent COACH PRO
+ * Alertes d'abonnements expirés & à renouveler, statistiques en FCFA et gestion rapide des athlètes.
  */
 
 import { stateManager } from '../state.js';
 import { Calculations } from '../calculations.js';
+import { LicenseManager } from '../security/license.js';
 
 export const Dashboard = {
   render(container) {
     const clients = stateManager.getClients();
     const coach = stateManager.getCoachProfile();
+    const licenseInfo = LicenseManager.getLicenseInfo();
+    const todayStr = new Date().toISOString().split('T')[0];
 
     const totalClients = clients.length;
     let totalSessionsDone = 0;
     let totalBalanceDue = 0;
-    
+
+    // Analyse des abonnements & alertes de renouvellement
+    const expiredClients = [];
+    const expiringSoonClients = [];
+
     clients.forEach(c => {
-      if (c.package) {
-        totalSessionsDone += (c.package.sessionsUsed || 0);
-        totalBalanceDue += (c.package.balanceDue || 0);
+      const pkg = c.package || {};
+      if (pkg.price || pkg.totalSessions || pkg.durationMonths) {
+        totalSessionsDone += (pkg.sessionsUsed || 0);
+        totalBalanceDue += (pkg.balanceDue || 0);
+
+        const isDuration = pkg.packageType === 'duration';
+        const sessionsLeft = !isDuration ? Math.max(0, (pkg.totalSessions || 0) - (pkg.sessionsUsed || 0)) : null;
+        
+        let isExpired = false;
+        let isExpiringSoon = false;
+        let expireReason = '';
+
+        if (!isDuration) {
+          if (sessionsLeft === 0) {
+            isExpired = true;
+            expireReason = '0 séance restante (Forfait terminé)';
+          } else if (sessionsLeft <= 2) {
+            isExpiringSoon = true;
+            expireReason = `Plus que ${sessionsLeft} séance(s) restante(s)`;
+          }
+        }
+
+        if (pkg.endDate) {
+          const diffDays = Math.ceil((new Date(pkg.endDate) - new Date()) / (1000 * 60 * 60 * 24));
+          if (diffDays < 0) {
+            isExpired = true;
+            expireReason = `Échéance dépassée le ${new Date(pkg.endDate).toLocaleDateString('fr-FR')}`;
+          } else if (diffDays <= 4 && !isExpired) {
+            isExpiringSoon = true;
+            expireReason = `Expire dans ${diffDays} jour(s) (${new Date(pkg.endDate).toLocaleDateString('fr-FR')})`;
+          }
+        }
+
+        if (isExpired) {
+          expiredClients.push({ client: c, reason: expireReason });
+        } else if (isExpiringSoon) {
+          expiringSoonClients.push({ client: c, reason: expireReason });
+        }
       }
     });
 
@@ -27,74 +69,231 @@ export const Dashboard = {
     container.innerHTML = `
       <div class="dashboard-view space-y-6">
         
-        <!-- En-tête Coach Sobre -->
-        <div class="glass-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-emerald-500">
+        <!-- BANNIÈRE ESSAI OU EXPIRATION DE LICENCE -->
+        ${licenseInfo.isTrial ? `
+          <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-amber-500/5">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">⚡</span>
+              <div>
+                <p class="text-xs sm:text-sm font-bold text-amber-300">
+                  Mode Essai Gratuit Actif : Il vous reste <strong class="text-white">${licenseInfo.daysRemaining} jour(s)</strong> d'évaluation.
+                </p>
+                <p class="text-[11px] text-amber-400/80">
+                  Profitez de toutes les fonctionnalités. Activez votre licence pour déverrouiller définitivement votre accès.
+                </p>
+              </div>
+            </div>
+            <button onclick="window.App.openSettingsModal()" class="btn btn-secondary btn-xs shrink-0 font-bold">
+              🔑 Activer ma Licence
+            </button>
+          </div>
+        ` : (!licenseInfo.isLifetime && licenseInfo.daysRemaining <= 3) ? `
+          <div class="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-rose-500/5">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">⏳</span>
+              <div>
+                <p class="text-xs sm:text-sm font-bold text-rose-300">
+                  Votre abonnement expire bientôt : <strong class="text-white">${licenseInfo.daysRemaining} jour(s) restant(s)</strong> (${licenseInfo.expiryFormatted}).
+                </p>
+                <p class="text-[11px] text-rose-400/80">
+                  Pensez à renouveler votre clé auprès de l'administrateur pour éviter toute interruption.
+                </p>
+              </div>
+            </div>
+            <button onclick="window.App.openSettingsModal()" class="btn btn-primary btn-xs shrink-0 font-bold">
+              🔄 Renouveler ma Clé
+            </button>
+          </div>
+        ` : ''}
+
+        <!-- En-tête Coach Lumineux -->
+        <div class="glass-card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-emerald-500 shadow-xl">
           <div>
-            <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider">
-              Espace Coach Privé ${coach.city ? `• ${coach.city}` : ''}
-            </span>
-            <h1 class="text-2xl font-bold text-white mt-0.5">
+            <div class="flex items-center gap-2">
+              <span class="badge badge-emerald text-xs">Espace Coach Privé</span>
+              ${coach.city ? `<span class="text-xs text-slate-300 font-semibold">• ${coach.city}</span>` : ''}
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-black text-white mt-1">
               Bonjour, <span class="text-emerald-400">${displayName}</span>
             </h1>
-            <p class="text-xs text-slate-400 mt-0.5">
-              ${coach.brand ? `${coach.brand} • ` : ''}<span class="text-slate-300">${coach.motto ? `"${coach.motto}"` : 'Prêt pour les séances du jour'}</span>
+            <p class="text-xs text-slate-300 mt-0.5">
+              ${coach.brand ? `<strong class="text-white">${coach.brand}</strong> • ` : ''}<span class="text-slate-300">${coach.motto ? `"${coach.motto}"` : 'Prêt pour les séances du jour'}</span>
             </p>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
-            <button id="btn-dash-new-client" class="btn btn-primary btn-sm">
-              + Nouveau Client
+            <button id="btn-dash-new-client" class="btn btn-primary btn-sm shadow-lg shadow-emerald-500/20 font-bold">
+              <span>+</span> Nouveau Client
             </button>
-            <button id="btn-dash-quick-calc" class="btn btn-secondary btn-sm">
-              Calculateur Flash
+            <button id="btn-dash-quick-calc" class="btn btn-secondary btn-sm font-semibold">
+              <span>⚡</span> Calculateur
             </button>
-            <button id="btn-dash-settings" class="btn btn-outline btn-sm">
-              Profil & Reçus
+            <button id="btn-dash-settings" class="btn btn-outline btn-sm font-semibold">
+              <span>⚙️</span> Profil
             </button>
           </div>
         </div>
 
-        <!-- 3 Cartes Métriques Clés en FCFA -->
+        <!-- BANNIÈRE D'ALERTES ABONNEMENTS (EXPIRÉS & PROCHES) -->
+        ${(expiredClients.length > 0 || expiringSoonClients.length > 0) ? `
+          <div class="glass-card p-5 space-y-3 border-t-4 border-amber-500 shadow-xl bg-gradient-to-r from-amber-950/20 via-slate-900/60 to-slate-900/90">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">🔔</span>
+                <h3 class="text-sm font-bold text-white">Alertes Renouvellement Forfaits (${expiredClients.length + expiringSoonClients.length})</h3>
+              </div>
+              <span class="badge ${expiredClients.length > 0 ? 'badge-rose' : 'badge-amber'} text-xs font-bold font-mono">
+                ${expiredClients.length} expiré(s) • ${expiringSoonClients.length} à relancer
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              ${expiredClients.map(({ client: c, reason }) => `
+                <div class="p-3 rounded-xl bg-rose-950/30 border border-rose-500/40 flex items-center justify-between gap-3 shadow-sm">
+                  <div class="min-w-0">
+                    <strong class="text-xs text-white block font-bold truncate">${c.firstName} ${c.lastName}</strong>
+                    <span class="text-[11px] text-rose-300 font-semibold block">${reason}</span>
+                    <span class="text-[10px] text-slate-400 font-mono">${c.phone || 'Pas de numéro'}</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <button class="btn btn-whatsapp btn-xs py-1 px-2.5 btn-alert-whatsapp" data-client-id="${c.id}" title="Relancer sur WhatsApp">
+                      💬
+                    </button>
+                    <button class="btn btn-primary btn-xs py-1 px-2.5 font-bold btn-alert-renew" data-client-id="${c.id}">
+                      Renouveler
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+
+              ${expiringSoonClients.map(({ client: c, reason }) => `
+                <div class="p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 flex items-center justify-between gap-3 shadow-sm">
+                  <div class="min-w-0">
+                    <strong class="text-xs text-white block font-bold truncate">${c.firstName} ${c.lastName}</strong>
+                    <span class="text-[11px] text-amber-300 font-semibold block">${reason}</span>
+                    <span class="text-[10px] text-slate-400 font-mono">${c.phone || 'Pas de numéro'}</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <button class="btn btn-whatsapp btn-xs py-1 px-2.5 btn-alert-whatsapp" data-client-id="${c.id}" title="Rappeler sur WhatsApp">
+                      💬
+                    </button>
+                    <button class="btn btn-secondary btn-xs py-1 px-2.5 font-bold btn-alert-renew" data-client-id="${c.id}">
+                      Voir Forfait
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- 3 Cartes Métriques Clés en FCFA (Hautement Contrastées) -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="glass-card p-4">
-            <span class="text-xs text-slate-400 font-semibold block uppercase tracking-wider">Clients Suivis</span>
-            <span class="text-3xl font-bold text-white mt-1 block">${totalClients}</span>
-            <span class="text-[11px] text-slate-500">Athlètes actifs</span>
+          <div class="glass-card p-5 space-y-1">
+            <span class="text-xs text-slate-400 font-bold block uppercase tracking-wider">Clients en Suivi</span>
+            <span class="text-3xl font-extrabold text-white block">${totalClients}</span>
+            <span class="text-[11px] text-slate-400">Athlètes enregistrés</span>
           </div>
 
-          <div class="glass-card p-4">
-            <span class="text-xs text-slate-400 font-semibold block uppercase tracking-wider">Séances Effectuées</span>
-            <span class="text-3xl font-bold text-emerald-400 mt-1 block">${totalSessionsDone}</span>
-            <span class="text-[11px] text-slate-500">Total séances pointées</span>
+          <div class="glass-card p-5 space-y-1">
+            <span class="text-xs text-slate-400 font-bold block uppercase tracking-wider">Séances Effectuées</span>
+            <span class="text-3xl font-extrabold text-emerald-400 block">${totalSessionsDone}</span>
+            <span class="text-[11px] text-slate-400">Total séances pointées</span>
           </div>
 
-          <div class="glass-card p-4">
-            <span class="text-xs text-slate-400 font-semibold block uppercase tracking-wider">Soldes à Encaisser</span>
-            <span class="text-2xl font-bold text-white font-mono mt-1 block">${Calculations.formatFCFA(totalBalanceDue)}</span>
-            <span class="text-[11px] ${totalBalanceDue > 0 ? 'text-amber-400 font-semibold' : 'text-slate-500'}">
-              ${totalBalanceDue > 0 ? 'Règlements restants' : 'Tous forfaits soldés'}
+          <div class="glass-card p-5 space-y-1">
+            <span class="text-xs text-slate-400 font-bold block uppercase tracking-wider">Soldes à Encaisser</span>
+            <span class="text-2xl font-extrabold text-white font-mono block">${Calculations.formatFCFA(totalBalanceDue)}</span>
+            <span class="text-[11px] ${totalBalanceDue > 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}">
+              ${totalBalanceDue > 0 ? 'Règlements restants' : 'Tous forfaits soldés ✓'}
             </span>
           </div>
         </div>
 
-        <!-- Tableau des Clients -->
+        <!-- SECTION ATHLÈTES PRÉVUS AUJOURD'HUI (PLANNING & POINTAGE RAPIDE) -->
+        ${(() => {
+          const todayClients = stateManager.getClientsForToday();
+          return `
+            <div class="glass-card p-5 space-y-4 border-l-4 border-emerald-500 shadow-xl">
+              <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">🎯</span>
+                  <div>
+                    <h3 class="text-sm font-bold text-white">Athlètes Prévus Aujourd'hui (${todayClients.length})</h3>
+                    <p class="text-[11px] text-slate-400">Pointage rapide de présence en 1 clic pour vos séances du jour</p>
+                  </div>
+                </div>
+                <span class="badge badge-emerald text-xs font-bold font-mono">
+                  ${new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+
+              ${todayClients.length === 0 ? `
+                <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-center text-xs text-slate-400">
+                  Aucun athlète programmé spécifiquement pour aujourd'hui. Retrouvez vos clients ci-dessous.
+                </div>
+              ` : `
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  ${todayClients.map(c => {
+                    const pkg = c.package || {};
+                    const isDuration = pkg.packageType === 'duration';
+                    const sessionsLeft = !isDuration ? Math.max(0, (pkg.totalSessions || 0) - (pkg.sessionsUsed || 0)) : null;
+                    const clientCode = `CP-${c.id.slice(-6).toUpperCase()}`;
+                    const initials = `${c.firstName?.charAt(0) || ''}${c.lastName?.charAt(0) || ''}`.toUpperCase() || 'CP';
+
+                    return `
+                      <div class="p-3.5 rounded-2xl bg-[#090d18] border border-slate-800 hover:border-emerald-500/50 transition-all space-y-3 shadow-lg">
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-md">
+                              ${initials}
+                            </div>
+                            <div class="min-w-0">
+                              <strong class="text-white text-xs font-bold block truncate">${c.firstName} ${c.lastName}</strong>
+                              <span class="text-[10px] text-slate-400 font-mono block truncate">${clientCode} • ${c.residence || 'Abidjan'}</span>
+                            </div>
+                          </div>
+                          <span class="badge ${isDuration ? 'badge-emerald' : (sessionsLeft <= 2 ? 'badge-amber' : 'badge-neutral')} text-[10px] font-mono shrink-0">
+                            ${isDuration ? 'Actif' : `${sessionsLeft} rest.`}
+                          </span>
+                        </div>
+
+                        <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
+                          <button class="btn btn-emerald btn-xs flex-1 py-1.5 font-bold shadow-md btn-today-point" data-client-id="${c.id}" title="Pointer la présence du jour">
+                            ⚡ Pointer
+                          </button>
+                          <button class="btn btn-secondary btn-xs flex-1 py-1.5 font-semibold" data-action="open-client" data-client-id="${c.id}">
+                            📂 Dossier
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `}
+            </div>
+          `;
+        })()}
+
+        <!-- Tableau & Liste des Clients -->
         ${totalClients === 0 ? `
           <div class="glass-card p-10 text-center space-y-4">
+            <div class="text-4xl">👥</div>
             <div>
               <h3 class="text-base font-bold text-white">Aucun client pour le moment</h3>
-              <p class="text-xs text-slate-400 max-w-md mx-auto mt-1">
+              <p class="text-xs text-slate-300 max-w-md mx-auto mt-1">
                 Créez votre première fiche client pour calculer automatiquement ses indicateurs corporels, enregistrer ses paiements et imprimer ses reçus.
               </p>
             </div>
-            <button id="btn-empty-create-client" class="btn btn-primary btn-sm">
+            <button id="btn-empty-create-client" class="btn btn-primary btn-sm font-bold shadow-lg shadow-emerald-500/20">
               + Créer mon premier client
             </button>
           </div>
         ` : `
           <div class="glass-card p-4 sm:p-5 space-y-4">
-            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 class="text-sm font-bold text-white">Clients en Suivi (${totalClients})</h3>
-              <button id="btn-see-all-clients" class="text-xs text-emerald-400 hover:underline">Gérer tous les clients →</button>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 class="text-sm font-bold text-white">Tous les Clients en Suivi (${totalClients})</h3>
+              <button id="btn-see-all-clients" class="text-xs text-emerald-400 hover:text-emerald-300 font-bold hover:underline">Gérer tous les clients →</button>
             </div>
 
             <!-- VUE MOBILE (Cartes Tactiles Fluides) -->
@@ -107,30 +306,30 @@ export const Dashboard = {
                 const balanceDue = pkg.balanceDue || 0;
 
                 return `
-                  <div class="sub-card p-3.5 space-y-3 border border-slate-800">
+                  <div class="sub-card p-4 space-y-3 border border-slate-800 shadow-md">
                     <div class="flex items-start justify-between gap-2">
                       <div>
                         <strong class="text-white text-sm font-bold block">${c.firstName} ${c.lastName}</strong>
-                        <span class="text-[11px] text-slate-400">${c.residence ? `${c.residence}` : (c.phone || '')}</span>
+                        <span class="text-[11px] text-slate-300 font-semibold">${c.residence ? `${c.residence}` : (c.phone || '')}</span>
                       </div>
-                      <span class="badge badge-neutral text-[10px]">${c.mainGoal}</span>
+                      <span class="badge badge-emerald text-[10px]">${c.mainGoal}</span>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-2 bg-[#0c1220] p-2 rounded-lg text-center text-xs">
+                    <div class="grid grid-cols-3 gap-2 bg-[#0c1220] p-2.5 rounded-xl text-center text-xs border border-slate-800">
                       <div>
-                        <span class="text-[10px] text-slate-500 block">Poids</span>
+                        <span class="text-[10px] text-slate-400 font-semibold block">Poids</span>
                         <span class="font-bold text-white font-mono">${last ? `${last.weight} kg` : '--'}</span>
                       </div>
                       <div>
-                        <span class="text-[10px] text-slate-500 block">Forfait</span>
+                        <span class="text-[10px] text-slate-400 font-semibold block">Forfait</span>
                         <span class="font-bold ${isDuration ? 'text-emerald-400' : (sessionsLeft <= 2 ? 'text-amber-400' : 'text-emerald-400')} font-mono">
                           ${isDuration ? `${pkg.durationMonths || 1}M` : `${sessionsLeft} rest.`}
                         </span>
                       </div>
                       <div>
-                        <span class="text-[10px] text-slate-500 block">Solde</span>
-                        <span class="font-bold ${balanceDue > 0 ? 'text-amber-400' : 'text-slate-400'} font-mono text-[11px]">
-                          ${balanceDue > 0 ? Calculations.formatFCFA(balanceDue) : 'Réglé'}
+                        <span class="text-[10px] text-slate-400 font-semibold block">Solde</span>
+                        <span class="font-bold ${balanceDue > 0 ? 'text-amber-400' : 'text-slate-300'} font-mono text-[11px]">
+                          ${balanceDue > 0 ? Calculations.formatFCFA(balanceDue) : 'Réglé ✓'}
                         </span>
                       </div>
                     </div>
@@ -139,10 +338,10 @@ export const Dashboard = {
                       <button class="btn btn-primary btn-xs flex-1 py-2 font-bold" data-action="open-client" data-client-id="${c.id}">
                         Dossier
                       </button>
-                      <button class="btn btn-secondary btn-xs flex-1 py-2" data-action="print-bilan" data-client-id="${c.id}">
+                      <button class="btn btn-secondary btn-xs flex-1 py-2 font-semibold" data-action="print-bilan" data-client-id="${c.id}">
                         Ticket Bilan
                       </button>
-                      <button class="btn btn-outline btn-xs px-2.5 py-2" data-action="print-sub" data-client-id="${c.id}">
+                      <button class="btn btn-outline btn-xs px-3 py-2 font-semibold" data-action="print-sub" data-client-id="${c.id}">
                         Reçu
                       </button>
                     </div>
@@ -154,7 +353,7 @@ export const Dashboard = {
             <!-- VUE DESKTOP (Tableau classique) -->
             <div class="hidden md:block overflow-x-auto">
               <table class="w-full text-left text-xs text-slate-300">
-                <thead class="bg-[#0c1220] text-slate-400 uppercase font-semibold border-b border-slate-800">
+                <thead class="bg-[#0c1220] text-slate-400 uppercase font-bold border-b border-slate-800">
                   <tr>
                     <th class="p-3">Client</th>
                     <th class="p-3">Objectif</th>
@@ -175,11 +374,11 @@ export const Dashboard = {
                     return `
                       <tr class="hover:bg-slate-800/40 transition-colors">
                         <td class="p-3">
-                          <strong class="text-white block font-semibold">${c.firstName} ${c.lastName}</strong>
-                          <span class="text-[11px] text-slate-400">${c.residence ? `${c.residence} • ` : ''}${c.phone || ''}</span>
+                          <strong class="text-white block font-bold text-sm">${c.firstName} ${c.lastName}</strong>
+                          <span class="text-[11px] text-slate-400 font-semibold">${c.residence ? `${c.residence} • ` : ''}${c.phone || ''}</span>
                         </td>
                         <td class="p-3">
-                          <span class="badge badge-neutral">${c.mainGoal}</span>
+                          <span class="badge badge-emerald">${c.mainGoal}</span>
                         </td>
                         <td class="p-3 font-mono font-bold text-white">
                           ${last ? `${last.weight} kg` : '--'}
@@ -195,11 +394,11 @@ export const Dashboard = {
                             </span>
                           `}
                         </td>
-                        <td class="p-3 font-mono ${balanceDue > 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}">
+                        <td class="p-3 font-mono ${balanceDue > 0 ? 'text-amber-400 font-bold' : 'text-slate-300'}">
                           ${Calculations.formatFCFA(balanceDue)}
                         </td>
-                        <td class="p-3 text-right space-x-1">
-                          <button class="btn btn-secondary btn-xs" data-action="open-client" data-client-id="${c.id}">
+                        <td class="p-3 text-right space-x-1.5">
+                          <button class="btn btn-secondary btn-xs font-bold" data-action="open-client" data-client-id="${c.id}">
                             Dossier
                           </button>
                           <button class="btn btn-outline btn-xs" data-action="print-bilan" data-client-id="${c.id}">
@@ -244,10 +443,50 @@ export const Dashboard = {
       window.App.navigateTo('clients');
     });
 
+    container.querySelectorAll('.btn-today-point').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const clientId = e.currentTarget.getAttribute('data-client-id');
+        const client = stateManager.getClientById(clientId);
+        if (!client) return;
+        stateManager.logSessionAttendance(clientId, {
+          date: new Date().toISOString().split('T')[0],
+          sessionType: 'Séance Coaching Privé',
+          notes: 'Pointage direct depuis tableau de bord'
+        });
+        window.App.showToast(`Séance pointée pour ${client.firstName} !`, 'success');
+        this.render(container);
+      });
+    });
+
     container.querySelectorAll('[data-action="open-client"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const clientId = e.currentTarget.getAttribute('data-client-id');
         window.App.openClientDetail(clientId);
+      });
+    });
+
+    container.querySelectorAll('.btn-alert-renew').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const clientId = e.currentTarget.getAttribute('data-client-id');
+        window.App.openClientDetail(clientId, 'billing');
+      });
+    });
+
+    container.querySelectorAll('.btn-alert-whatsapp').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const clientId = e.currentTarget.getAttribute('data-client-id');
+        const client = stateManager.getClientById(clientId);
+        if (!client) return;
+
+        const coach = stateManager.getCoachProfile();
+        let msg = `Bonjour ${client.firstName},\n`;
+        msg += `C'est ${coach.name || 'votre Coach'}. Je vous contacte concernant votre forfait d'entraînement chez COACH PRO qui arrive à échéance.\n`;
+        msg += `Souhaitez-vous que l'on prépare le renouvellement de vos prochaines séances ?\n\n`;
+        msg += `Sportivement,\n${coach.name || 'Votre Coach'}`;
+
+        const phone = (client.phone || '').replace(/[^0-9]/g, '');
+        const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
       });
     });
 

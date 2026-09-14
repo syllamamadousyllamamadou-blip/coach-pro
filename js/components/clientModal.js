@@ -98,19 +98,36 @@ export const ClientModal = {
           </div>
         </div>
 
-        <!-- 2. OBJECTIF & POIDS CIBLE -->
+        <!-- 2. OBJECTIFS MULTIPLES & POIDS CIBLE -->
         <div class="sub-card p-4 space-y-3">
-          <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">2. Objectifs du Client</h4>
+          <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">2. Objectifs du Client (Sélectionnez un ou plusieurs)</h4>
           
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            ${[
+              'Perte de poids',
+              'Prise de muscle',
+              'Remise en forme',
+              'Cardio & Endurance',
+              'Santé & Mobilité',
+              'Posture & Dos',
+              'Prépa Concours / Sport',
+              'Alimentation'
+            ].map(g => {
+              const currentGoals = Array.isArray(client?.goals) ? client.goals : (client?.mainGoal ? [client.mainGoal] : ['Perte de poids']);
+              const isChecked = currentGoals.some(cg => cg.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(cg.toLowerCase()));
+              return `
+                <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-emerald-500/50 cursor-pointer">
+                  <input type="checkbox" name="goals" value="${g}" class="modal-goal-cb rounded accent-emerald-500" ${isChecked ? 'checked' : ''} />
+                  <span class="text-slate-200 font-semibold">${g}</span>
+                </label>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80">
             <div>
-              <label class="label">Objectif Principal *</label>
-              <select name="mainGoal" class="input font-semibold">
-                <option value="Perte de poids" ${client?.mainGoal === 'Perte de poids' ? 'selected' : ''}>Perte de poids / Sèche</option>
-                <option value="Prise de masse musculaire" ${client?.mainGoal === 'Prise de masse musculaire' ? 'selected' : ''}>Prise de masse musculaire</option>
-                <option value="Remise en forme" ${client?.mainGoal === 'Remise en forme' ? 'selected' : ''}>Remise en forme & Tonification</option>
-                <option value="Santé & Mobilité" ${client?.mainGoal === 'Santé & Mobilité' ? 'selected' : ''}>Santé & Mobilité</option>
-              </select>
+              <label class="label">Autre Objectif Spécifique</label>
+              <input type="text" name="customGoal" value="${client?.customGoal || ''}" placeholder="ex: Marathon, Soulager sciatique..." class="input text-xs" />
             </div>
             <div>
               <label class="label">Poids Cible (kg)</label>
@@ -157,21 +174,41 @@ export const ClientModal = {
             </div>
           </div>
 
-          <!-- Mesures complémentaires facultatives -->
-          <div class="pt-2 border-t border-slate-800">
-            <span class="text-[11px] text-slate-400 font-semibold block mb-2">Mesures Complémentaires (Facultatif) :</span>
-            <div class="grid grid-cols-3 gap-3">
-              <div>
-                <label class="label">Tour de Taille (cm)</label>
-                <input type="number" inputmode="decimal" step="0.5" name="waist" value="${lastAssessment?.waist || ''}" placeholder="Facultatif" class="input" />
+          <!-- Mesures complémentaires & Tension Artérielle -->
+          <div class="pt-2 border-t border-slate-800 space-y-3">
+            <div>
+              <span class="text-[11px] text-slate-400 font-semibold block mb-2">Tension Artérielle & Données Cardiovasculaires :</span>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="label">Tension Systolique (mmHg)</label>
+                  <input type="number" inputmode="numeric" name="systolic" value="${lastAssessment?.systolic || ''}" placeholder="ex: 120 (Max)" class="input font-mono font-bold" />
+                </div>
+                <div>
+                  <label class="label">Tension Diastolique (mmHg)</label>
+                  <input type="number" inputmode="numeric" name="diastolic" value="${lastAssessment?.diastolic || ''}" placeholder="ex: 80 (Min)" class="input font-mono font-bold" />
+                </div>
+                <div>
+                  <label class="label">Fréquence Cardiaque (BPM)</label>
+                  <input type="number" inputmode="numeric" name="pulse" value="${lastAssessment?.pulse || ''}" placeholder="ex: 68 bpm" class="input font-mono" />
+                </div>
               </div>
-              <div>
-                <label class="label">Tour de Hanches (cm)</label>
-                <input type="number" inputmode="decimal" step="0.5" name="hips" value="${lastAssessment?.hips || ''}" placeholder="Facultatif" class="input" />
-              </div>
-              <div>
-                <label class="label">Graisse Viscérale</label>
-                <input type="number" inputmode="numeric" name="visceralFat" id="modal-visceral" value="${lastAssessment?.visceralFat || ''}" placeholder="Auto" class="input" />
+            </div>
+
+            <div>
+              <span class="text-[11px] text-slate-400 font-semibold block mb-2">Mesures Complémentaires (Facultatif) :</span>
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <label class="label">Tour de Taille (cm)</label>
+                  <input type="number" inputmode="decimal" step="0.5" name="waist" value="${lastAssessment?.waist || ''}" placeholder="Facultatif" class="input" />
+                </div>
+                <div>
+                  <label class="label">Tour de Hanches (cm)</label>
+                  <input type="number" inputmode="decimal" step="0.5" name="hips" value="${lastAssessment?.hips || ''}" placeholder="Facultatif" class="input" />
+                </div>
+                <div>
+                  <label class="label">Graisse Viscérale</label>
+                  <input type="number" inputmode="numeric" name="visceralFat" id="modal-visceral" value="${lastAssessment?.visceralFat || ''}" placeholder="Auto" class="input" />
+                </div>
               </div>
             </div>
           </div>
@@ -386,6 +423,14 @@ export const ClientModal = {
           if (cb.checked) riskAnswers[cb.getAttribute('data-id')] = true;
         });
 
+        const selectedGoals = [];
+        form.querySelectorAll('.modal-goal-cb').forEach(cb => {
+          if (cb.checked && cb.value) selectedGoals.push(cb.value);
+        });
+        const customGoal = formData.get('customGoal')?.trim();
+        if (customGoal) selectedGoals.push(customGoal);
+        if (selectedGoals.length === 0) selectedGoals.push('Transformation Physique');
+
         const totalAmt = parseFloat(formData.get('totalAmount')) || 0;
         const paidAmt = parseFloat(formData.get('amountPaid')) || 0;
         const pkgType = formData.get('packageType') || 'sessions';
@@ -401,7 +446,9 @@ export const ClientModal = {
           email: formData.get('email') || '',
           residence: formData.get('residence') || '',
           profession: formData.get('profession') || '',
-          mainGoal: formData.get('mainGoal') || 'Perte de poids',
+          goals: selectedGoals,
+          mainGoal: selectedGoals.join(', '),
+          customGoal: customGoal || '',
           targetWeight: parseFloat(formData.get('targetWeight')) || null,
           targetDate: formData.get('targetDate') || '',
           medicalNotes: {

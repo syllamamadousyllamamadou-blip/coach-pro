@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "com.coachpro.app-merged_res-32:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.coachpro.app-main-34:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.coachpro.app-merged_res-32:/xml_backup_rules.xml.flat",
+        "source": "com.coachpro.app-main-34:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "com.coachpro.app-merged_res-32:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.coachpro.app-main-34:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.coachpro.app-merged_res-32:/xml_data_extraction_rules.xml.flat",
+        "source": "com.coachpro.app-main-34:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.coachpro.app-merged_res-32:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.coachpro.app-main-34:/drawable/ic_launcher_background.xml"
+    }
+]

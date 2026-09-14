@@ -14,15 +14,26 @@ import { BodyComp } from './bodyComp.js';
 import { Metabolic } from './metabolic.js';
 import { Comparator } from './comparator.js';
 import { Billing } from './billing.js';
+import { PhotosComponent } from './photos.js';
+import { RecurringScheduleComponent } from './recurringSchedule.js';
+import { ContractModal } from './contractModal.js';
+import { TodoList } from './todoList.js';
+import { PinLock } from '../security/pinLock.js';
 import { Calculations } from '../calculations.js';
 
 export const ClientDetail = {
   currentTab: 'overview',
   activeClientId: null,
 
-  render(container, clientId, initialTab = 'overview') {
-    this.activeClientId = clientId;
-    this.currentTab = initialTab;
+  render(container, clientId, initialTab = null) {
+    if (this.activeClientId !== clientId) {
+      this.activeClientId = clientId;
+      this.currentTab = initialTab || 'overview';
+    } else if (initialTab) {
+      this.currentTab = initialTab;
+    } else if (!this.currentTab) {
+      this.currentTab = 'overview';
+    }
     const client = stateManager.getClientById(clientId);
 
     if (!client) {
@@ -39,6 +50,8 @@ export const ClientDetail = {
       return;
     }
 
+    const clientCode = `CP-${client.id.slice(-6).toUpperCase()}`;
+
     container.innerHTML = `
       <div class="client-detail-view space-y-6">
         
@@ -47,13 +60,17 @@ export const ClientDetail = {
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             
             <div>
-              <button id="btn-back-list" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 mb-1">
+              <button id="btn-back-list" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 mb-1 font-semibold">
                 ← Retour à la liste
               </button>
               
-              <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+              <h1 class="text-2xl font-bold text-white flex flex-wrap items-center gap-2">
                 <span>${client.firstName} ${client.lastName}</span>
-                <span class="badge badge-emerald text-xs">${client.mainGoal}</span>
+                <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-800 text-emerald-400 border border-slate-700">${clientCode}</span>
+                ${Array.isArray(client.goals) && client.goals.length > 0 ? 
+                  client.goals.map(g => `<span class="badge badge-emerald text-xs">${g}</span>`).join('') :
+                  `<span class="badge badge-emerald text-xs">${client.mainGoal || 'Transformation'}</span>`
+                }
               </h1>
               
               <!-- Habitation, Profession, Contact -->
@@ -68,6 +85,18 @@ export const ClientDetail = {
 
             <!-- Boutons d'Action & 3 Reçus Thermiques Responsive -->
             <div class="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2">
+              <button id="btn-quick-point-attendance" class="btn btn-emerald btn-xs sm:btn-sm flex items-center justify-center gap-1 font-bold shadow-lg shadow-emerald-500/30" title="Pointer 1 séance immédiatement">
+                <span>⚡</span>
+                <span>Pointer</span>
+              </button>
+              <button id="btn-open-renew-modal" class="btn btn-primary btn-xs sm:btn-sm flex items-center justify-center gap-1 font-bold shadow-lg shadow-emerald-500/20" title="Renouveler le forfait">
+                <span>🔄</span>
+                <span>Renouveler</span>
+              </button>
+              <button id="btn-open-contract-modal" class="btn btn-secondary btn-xs sm:btn-sm flex items-center justify-center gap-1 font-semibold" title="Signer l'Engagement">
+                <span>⚖️</span>
+                <span>Contrat</span>
+              </button>
               <button id="btn-print-bilan-action" class="btn btn-secondary btn-xs sm:btn-sm flex items-center justify-center gap-1" title="Imprimer le Bilan Corporel">
                 <span>📄</span>
                 <span>Bilan</span>
@@ -100,6 +129,15 @@ export const ClientDetail = {
             <button class="tab-sub-btn ${this.currentTab === 'overview' ? 'active' : ''}" data-tab="overview">
               Bilan & Mesures
             </button>
+            <button class="tab-sub-btn ${this.currentTab === 'todo' ? 'active' : ''}" data-tab="todo">
+              📝 To-Do (${client.todos?.filter(t => !t.completed).length || 0})
+            </button>
+            <button class="tab-sub-btn ${this.currentTab === 'photos' ? 'active' : ''}" data-tab="photos">
+              📸 Photos (${client.photos?.length || 0})
+            </button>
+            <button class="tab-sub-btn ${this.currentTab === 'schedule' ? 'active' : ''}" data-tab="schedule">
+              📅 Créneaux
+            </button>
             <button class="tab-sub-btn ${this.currentTab === 'program' ? 'active' : ''}" data-tab="program">
               Programme
             </button>
@@ -111,9 +149,6 @@ export const ClientDetail = {
             </button>
             <button class="tab-sub-btn ${this.currentTab === 'bodyComp' ? 'active' : ''}" data-tab="bodyComp">
               Pesées (${client.history?.length || 0})
-            </button>
-            <button class="tab-sub-btn ${this.currentTab === 'assessment21' ? 'active' : ''}" data-tab="assessment21">
-              Santé 21F
             </button>
             <button class="tab-sub-btn ${this.currentTab === 'billing' ? 'active' : ''}" data-tab="billing">
               Forfait & FCFA
@@ -137,6 +172,15 @@ export const ClientDetail = {
     if (!subContainer) return;
 
     switch (this.currentTab) {
+      case 'todo':
+        TodoList.render(subContainer, client);
+        break;
+      case 'photos':
+        PhotosComponent.render(subContainer, client);
+        break;
+      case 'schedule':
+        RecurringScheduleComponent.render(subContainer, client);
+        break;
       case 'program':
         this.renderProgramTab(subContainer, client);
         break;
@@ -276,6 +320,34 @@ export const ClientDetail = {
             ` : '<p class="text-xs text-slate-400 italic">--</p>'}
           </div>
         </div>
+
+        <!-- CARTE TENSION ARTÉRIELLE & SÉCURITÉ CARDIOVASCULAIRE -->
+        ${(() => {
+          const bp = last && last.systolic && last.diastolic ? Calculations.calculateBloodPressure(last.systolic, last.diastolic, last.pulse) : null;
+          if (!bp) return '';
+          return `
+            <div class="glass-card p-4 sm:p-5 space-y-3 ${bp.isSevere ? 'border-2 border-rose-500 bg-rose-950/20' : bp.isHigh ? 'border-amber-500/50 bg-amber-950/10' : 'border-emerald-500/40'}">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                  <span class="text-lg">${bp.isSevere ? '🚨' : bp.isHigh ? '⚠️' : '❤️'}</span>
+                  <div>
+                    <h3 class="text-sm font-bold text-white">Tension Artérielle & Fréquence Cardiaque</h3>
+                    <span class="text-[11px] text-slate-400">Classification selon les normes OMS / ESH</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-base font-bold font-mono text-white">${bp.formatted}</span>
+                  <span class="badge ${bp.color === 'rose' ? 'badge-danger' : bp.color === 'amber' || bp.color === 'orange' ? 'badge-amber' : 'badge-emerald'} text-xs font-bold">
+                    ${bp.category}
+                  </span>
+                </div>
+              </div>
+              <p class="text-xs ${bp.isSevere ? 'text-rose-300 font-semibold' : 'text-slate-300'}">
+                <strong>Recommandation du protocole :</strong> ${bp.advice}
+              </p>
+            </div>
+          `;
+        })()}
 
         <!-- DIAGNOSTIC PRÉCIS DU COACH (SURPOIDS / POIDS NORMAL / OBÉSITÉ) -->
         ${interpretation ? `
@@ -680,6 +752,26 @@ export const ClientDetail = {
       window.App.navigateTo('clients');
     });
 
+    container.querySelector('#btn-quick-point-attendance')?.addEventListener('click', () => {
+      stateManager.logSessionAttendance(client.id, {
+        date: new Date().toISOString().split('T')[0],
+        sessionType: 'Séance Coaching Privé',
+        notes: 'Pointage rapide 1-clic'
+      });
+      window.App.showToast(`Séance pointée pour ${client.firstName} !`, 'success');
+      this.render(container, client.id, this.currentTab);
+    });
+
+    container.querySelectorAll('.btn-trigger-renew, #btn-open-renew-modal').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.openRenewalModal(client);
+      });
+    });
+
+    container.querySelector('#btn-open-contract-modal')?.addEventListener('click', () => {
+      ContractModal.open(client.id);
+    });
+
     container.querySelector('#btn-print-bilan-action')?.addEventListener('click', () => {
       window.App.openThermalModal(client.id, null, 'assessment');
     });
@@ -701,11 +793,15 @@ export const ClientDetail = {
     });
 
     container.querySelector('#btn-delete-client-action')?.addEventListener('click', () => {
-      if (confirm(`Supprimer définitivement le dossier de ${client.firstName} ${client.lastName} ?`)) {
-        stateManager.deleteClient(client.id);
-        window.App.showToast('Client supprimé', 'info');
-        window.App.navigateTo('clients');
-      }
+      PinLock.requestPinConfirmation({
+        title: `Supprimer ${client.firstName} ${client.lastName}`,
+        message: `Entrez votre code PIN pour confirmer la suppression définitive du dossier de ${client.firstName} ${client.lastName}.`,
+        onConfirm: () => {
+          stateManager.deleteClient(client.id);
+          window.App.showToast('Client supprimé avec succès', 'info');
+          window.App.navigateTo('clients');
+        }
+      });
     });
 
     container.querySelectorAll('.tab-sub-btn').forEach(btn => {
@@ -715,6 +811,186 @@ export const ClientDetail = {
         this.currentTab = e.currentTarget.getAttribute('data-tab');
         this.renderActiveTab(container, client);
       });
+    });
+  },
+
+  /**
+   * Modal de Renouvellement de Forfait en 1 Clic avec Archivage Automatique
+   */
+  openRenewalModal(client) {
+    let modal = document.getElementById('client-renew-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'client-renew-modal';
+      modal.className = 'modal-backdrop flex items-center justify-center p-4 z-50';
+      document.body.appendChild(modal);
+    }
+
+    const currentPkg = client.package || {};
+    const defaultTotal = currentPkg.totalAmount || 150000;
+
+    modal.classList.remove('hidden');
+    modal.innerHTML = `
+      <div class="glass-card max-w-lg w-full p-6 space-y-5 border-t-4 border-emerald-500 shadow-2xl animate-fade-in relative max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span>🔄</span> Renouveler l'Abonnement
+            </h3>
+            <p class="text-xs text-slate-400">Pour ${client.firstName} ${client.lastName} (N° CP-${client.id.slice(-6).toUpperCase()})</p>
+          </div>
+          <button id="btn-close-renew-modal" class="text-slate-400 hover:text-white font-bold p-1 text-lg">✕</button>
+        </div>
+
+        <form id="form-renew-package" class="space-y-4">
+          <div>
+            <label class="label">Choisir la Formule *</label>
+            <select id="renew-package-preset" class="input font-bold text-emerald-400 text-xs bg-slate-950">
+              <option value="pack_10">Pack 10 Séances (Séances)</option>
+              <option value="pack_20">Pack 20 Séances (Séances)</option>
+              <option value="forfait_1m" selected>Forfait 1 Mois (Illimité)</option>
+              <option value="forfait_2m">Forfait 2 Mois (Illimité)</option>
+              <option value="forfait_3m">Forfait 3 Mois (Illimité)</option>
+              <option value="custom">Formule Personnalisée</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="label">Nom du Forfait *</label>
+              <input type="text" id="renew-pkg-name" value="Forfait 1 Mois" class="input font-semibold" required />
+            </div>
+            <div>
+              <label class="label">Date de Début *</label>
+              <input type="date" id="renew-start-date" value="${new Date().toISOString().split('T')[0]}" class="input font-mono" required />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="renew-sessions-fields">
+            <div>
+              <label class="label">Type de Forfait</label>
+              <select id="renew-pkg-type" class="input text-xs">
+                <option value="duration" selected>Durée (Mois)</option>
+                <option value="sessions">Nombre de Séances</option>
+              </select>
+            </div>
+            <div>
+              <label class="label" id="renew-qty-label">Durée (Mois)</label>
+              <input type="number" id="renew-qty-val" value="1" min="1" class="input font-mono font-bold text-emerald-400" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+            <div>
+              <label class="label">Tarif Total (FCFA) *</label>
+              <input type="number" id="renew-total-amt" value="${defaultTotal}" step="5000" class="input font-mono font-bold text-white text-base" required />
+            </div>
+            <div>
+              <label class="label">Acompte / Règlement (FCFA) *</label>
+              <input type="number" id="renew-paid-amt" value="${defaultTotal}" step="5000" class="input font-mono font-bold text-emerald-400 text-base" required />
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <button type="button" id="btn-cancel-renew" class="btn btn-secondary btn-sm font-semibold">Annuler</button>
+            <button type="submit" class="btn btn-primary btn-sm font-bold shadow-lg shadow-emerald-500/20">
+              Valider &amp; Renouveler l'Abonnement
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    modal.querySelector('#btn-close-renew-modal')?.addEventListener('click', () => modal.classList.add('hidden'));
+    modal.querySelector('#btn-cancel-renew')?.addEventListener('click', () => modal.classList.add('hidden'));
+
+    const presetSelect = modal.querySelector('#renew-package-preset');
+    const nameInput = modal.querySelector('#renew-pkg-name');
+    const typeSelect = modal.querySelector('#renew-pkg-type');
+    const qtyInput = modal.querySelector('#renew-qty-val');
+    const qtyLabel = modal.querySelector('#renew-qty-label');
+    const totalInput = modal.querySelector('#renew-total-amt');
+    const paidInput = modal.querySelector('#renew-paid-amt');
+
+    presetSelect?.addEventListener('change', (e) => {
+      const val = e.target.value;
+      if (val === 'pack_10') {
+        nameInput.value = 'Pack 10 Séances';
+        typeSelect.value = 'sessions';
+        qtyLabel.textContent = 'Nombre de Séances';
+        qtyInput.value = '10';
+        totalInput.value = '100000';
+        paidInput.value = '100000';
+      } else if (val === 'pack_20') {
+        nameInput.value = 'Pack 20 Séances';
+        typeSelect.value = 'sessions';
+        qtyLabel.textContent = 'Nombre de Séances';
+        qtyInput.value = '20';
+        totalInput.value = '180000';
+        paidInput.value = '180000';
+      } else if (val === 'forfait_1m') {
+        nameInput.value = 'Forfait 1 Mois';
+        typeSelect.value = 'duration';
+        qtyLabel.textContent = 'Durée (Mois)';
+        qtyInput.value = '1';
+        totalInput.value = '100000';
+        paidInput.value = '100000';
+      } else if (val === 'forfait_2m') {
+        nameInput.value = 'Forfait 2 Mois';
+        typeSelect.value = 'duration';
+        qtyLabel.textContent = 'Durée (Mois)';
+        qtyInput.value = '2';
+        totalInput.value = '150000';
+        paidInput.value = '150000';
+      } else if (val === 'forfait_3m') {
+        nameInput.value = 'Forfait 3 Mois';
+        typeSelect.value = 'duration';
+        qtyLabel.textContent = 'Durée (Mois)';
+        qtyInput.value = '3';
+        totalInput.value = '200000';
+        paidInput.value = '200000';
+      }
+    });
+
+    typeSelect?.addEventListener('change', (e) => {
+      if (e.target.value === 'duration') {
+        qtyLabel.textContent = 'Durée (Mois)';
+        qtyInput.value = '1';
+      } else {
+        qtyLabel.textContent = 'Nombre de Séances';
+        qtyInput.value = '10';
+      }
+    });
+
+    modal.querySelector('#form-renew-package')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const isDuration = typeSelect.value === 'duration';
+      const qty = parseInt(qtyInput.value, 10) || (isDuration ? 1 : 10);
+      const totalAmt = parseFloat(totalInput.value) || 0;
+      const paidAmt = parseFloat(paidInput.value) || 0;
+
+      const renewData = {
+        packageName: nameInput.value.trim() || (isDuration ? `Forfait ${qty} Mois` : `Pack ${qty} Séances`),
+        packageType: typeSelect.value,
+        durationMonths: isDuration ? qty : 1,
+        totalSessions: !isDuration ? qty : 10,
+        totalAmount: totalAmt,
+        amountPaid: paidAmt,
+        startDate: modal.querySelector('#renew-start-date')?.value || new Date().toISOString().split('T')[0]
+      };
+
+      stateManager.renewClientPackage(client.id, renewData);
+      modal.classList.add('hidden');
+      window.App.showToast(`Abonnement renouvelé pour ${client.firstName} !`, 'success');
+      
+      const mainContainer = document.getElementById('main-content');
+      if (mainContainer) {
+        this.render(mainContainer, client.id, this.currentTab);
+      }
+
+      setTimeout(() => {
+        window.App.openThermalModal(client.id, null, 'subscription');
+      }, 300);
     });
   }
 };

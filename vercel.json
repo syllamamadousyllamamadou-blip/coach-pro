@@ -3,6 +3,14 @@
   "cleanUrls": true,
   "routes": [
     {
+      "src": "/admin",
+      "dest": "/tools/admin_license_generator.html"
+    },
+    {
+      "src": "/license-admin",
+      "dest": "/tools/admin_license_generator.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/$1"
     }

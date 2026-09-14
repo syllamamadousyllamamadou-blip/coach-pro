@@ -1,6 +1,8 @@
 /**
  * clientList.js - Répertoire des Clients COACH PRO
- * Liste sobre et épurée sans pictogrammes superflus.
+ * Filtres intelligents (Aujourd'hui, À renouveler, Impayés),
+ * Recherche par N° ID client (ex: CP-849201), initiales stylisées,
+ * pointage direct et renouvellement d'abonnement en 1 clic.
  */
 
 import { stateManager } from '../state.js';
@@ -8,27 +10,89 @@ import { Calculations } from '../calculations.js';
 
 export const ClientList = {
   searchQuery: '',
+  activeFilter: 'all',
+
+  getGoalTheme(goal = '') {
+    const g = (goal || '').toLowerCase();
+    if (g.includes('perte') || g.includes('seche') || g.includes('poids') || g.includes('minceur')) {
+      return {
+        border: 'border-l-4 border-emerald-500',
+        badge: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
+        avatarBg: 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-emerald-500/20',
+        accent: 'text-emerald-400'
+      };
+    }
+    if (g.includes('masse') || g.includes('muscle') || g.includes('volume') || g.includes('prise')) {
+      return {
+        border: 'border-l-4 border-cyan-500',
+        badge: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40',
+        avatarBg: 'bg-gradient-to-br from-cyan-500 to-blue-700 text-white shadow-cyan-500/20',
+        accent: 'text-cyan-400'
+      };
+    }
+    if (g.includes('force') || g.includes('perf') || g.includes('cardio') || g.includes('endurance')) {
+      return {
+        border: 'border-l-4 border-purple-500',
+        badge: 'bg-purple-500/20 text-purple-300 border border-purple-500/40',
+        avatarBg: 'bg-gradient-to-br from-purple-500 to-indigo-700 text-white shadow-purple-500/20',
+        accent: 'text-purple-400'
+      };
+    }
+    return {
+      border: 'border-l-4 border-amber-500',
+      badge: 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
+      avatarBg: 'bg-gradient-to-br from-amber-500 to-orange-700 text-white shadow-amber-500/20',
+      accent: 'text-amber-400'
+    };
+  },
 
   render(container) {
     const clients = stateManager.getClients();
+    const todayClients = stateManager.getClientsForToday();
+    const renewCount = clients.filter(c => {
+      const pkg = c.package || {};
+      if (pkg.packageType === 'sessions') return (pkg.totalSessions || 0) - (pkg.sessionsUsed || 0) <= 2;
+      if (pkg.expiryDate) return Math.ceil((new Date(pkg.expiryDate) - new Date()) / (1000 * 60 * 60 * 24)) <= 4;
+      return false;
+    }).length;
+    const debtCount = clients.filter(c => (c.package?.balanceDue || 0) > 0).length;
 
     container.innerHTML = `
       <div class="client-list-view space-y-6">
         
-        <!-- Header & Recherche -->
+        <!-- Header & Ajout -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
           <div>
-            <h1 class="text-2xl font-bold text-white">Mes Clients (${clients.length})</h1>
-            <p class="text-xs text-slate-400">Gérez l'ensemble de vos dossiers athlètes</p>
+            <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+              <span>👥</span>
+              <span>Mes Clients (${clients.length})</span>
+            </h1>
+            <p class="text-xs text-slate-400">Recherche par Nom, Quartier ou N° ID unique (ex: CP-849201)</p>
           </div>
-          <button id="btn-list-add-client" class="btn btn-primary btn-sm">
+          <button id="btn-list-add-client" class="btn btn-primary btn-sm font-bold shadow-lg shadow-emerald-500/20">
             + Nouveau Client
           </button>
         </div>
 
-        <!-- Barre de Recherche -->
-        <div class="glass-card p-3">
-          <input type="text" id="input-client-search" value="${this.searchQuery}" placeholder="Rechercher par prénom, nom, quartier, profession, téléphone..." class="input" />
+        <!-- Barre de Recherche & Filtres Rapides -->
+        <div class="glass-card p-4 space-y-3">
+          <input type="text" id="input-client-search" value="${this.searchQuery}" placeholder="Rechercher par N° ID (CP-XXXX), prénom, nom, téléphone..." class="input" />
+          
+          <!-- Filtres Catégories -->
+          <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-800 text-xs">
+            <button class="filter-tab-btn px-3 py-1.5 rounded-xl font-bold transition-all ${this.activeFilter === 'all' ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20' : 'bg-slate-800 text-slate-300 hover:text-white'}" data-filter="all">
+              🌟 Tous (${clients.length})
+            </button>
+            <button class="filter-tab-btn px-3 py-1.5 rounded-xl font-bold transition-all ${this.activeFilter === 'today' ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20' : 'bg-slate-800 text-slate-300 hover:text-white'}" data-filter="today">
+              🎯 Aujourd'hui (${todayClients.length})
+            </button>
+            <button class="filter-tab-btn px-3 py-1.5 rounded-xl font-bold transition-all ${this.activeFilter === 'renew' ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20' : 'bg-slate-800 text-slate-300 hover:text-white'}" data-filter="renew">
+              ⚠️ À Renouveler (${renewCount})
+            </button>
+            <button class="filter-tab-btn px-3 py-1.5 rounded-xl font-bold transition-all ${this.activeFilter === 'debt' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20' : 'bg-slate-800 text-slate-300 hover:text-white'}" data-filter="debt">
+              💳 Reste Dû (${debtCount})
+            </button>
+          </div>
         </div>
 
         <!-- Liste des Clients -->
@@ -49,22 +113,53 @@ export const ClientList = {
 
     const q = this.searchQuery.toLowerCase().trim();
     const filtered = clients.filter(c => {
-      if (!q) return true;
-      return (
-        c.firstName.toLowerCase().includes(q) ||
-        c.lastName.toLowerCase().includes(q) ||
-        (c.phone && c.phone.includes(q)) ||
-        (c.residence && c.residence.toLowerCase().includes(q)) ||
-        (c.profession && c.profession.toLowerCase().includes(q)) ||
-        (c.mainGoal && c.mainGoal.toLowerCase().includes(q))
-      );
+      const clientCode = `cp-${c.id.slice(-6)}`.toLowerCase();
+      const numOnly = c.id.slice(-6).toLowerCase();
+
+      let textMatch = true;
+      if (q) {
+        textMatch = (
+          c.firstName.toLowerCase().includes(q) ||
+          c.lastName.toLowerCase().includes(q) ||
+          (c.phone && c.phone.includes(q)) ||
+          (c.residence && c.residence.toLowerCase().includes(q)) ||
+          (c.profession && c.profession.toLowerCase().includes(q)) ||
+          (c.mainGoal && c.mainGoal.toLowerCase().includes(q)) ||
+          clientCode.includes(q) ||
+          numOnly.includes(q) ||
+          c.id.toLowerCase().includes(q)
+        );
+      }
+      if (!textMatch) return false;
+
+      if (this.activeFilter === 'today') {
+        const daysMap = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+        const todayDay = daysMap[new Date().getDay()];
+        return c.trainingSchedule?.days?.includes(todayDay);
+      }
+      if (this.activeFilter === 'renew') {
+        const pkg = c.package || {};
+        if (pkg.packageType === 'sessions') {
+          return (pkg.totalSessions || 0) - (pkg.sessionsUsed || 0) <= 2;
+        }
+        if (pkg.expiryDate) {
+          const diff = Math.ceil((new Date(pkg.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+          return diff <= 4;
+        }
+        return false;
+      }
+      if (this.activeFilter === 'debt') {
+        const pkg = c.package || {};
+        return (pkg.balanceDue || 0) > 0;
+      }
+      return true;
     });
 
     if (filtered.length === 0) {
       listContainer.innerHTML = `
         <div class="glass-card p-10 text-center space-y-3">
           <p class="text-sm text-slate-400">
-            ${clients.length === 0 ? 'Vous n\'avez pas encore enregistré de client.' : 'Aucun client ne correspond à votre recherche.'}
+            ${clients.length === 0 ? 'Vous n\'avez pas encore enregistré de client.' : 'Aucun client ne correspond à ce filtre ou à votre recherche.'}
           </p>
           ${clients.length === 0 ? `
             <button id="btn-empty-list-add" class="btn btn-primary btn-sm">+ Enregistrer mon premier client</button>
@@ -78,119 +173,95 @@ export const ClientList = {
     }
 
     listContainer.innerHTML = `
-      <div class="space-y-3">
-        
-        <!-- VUE MOBILE (Cartes Tactiles) -->
-        <div class="block md:hidden space-y-3">
-          ${filtered.map(c => {
-            const last = c.history && c.history.length > 0 ? c.history[c.history.length - 1] : null;
-            const pkg = c.package || {};
-            const isDuration = pkg.packageType === 'duration';
-            const sessionsLeft = !isDuration ? Math.max(0, (pkg.totalSessions || 0) - (pkg.sessionsUsed || 0)) : null;
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        ${filtered.map(c => {
+          const last = c.history && c.history.length > 0 ? c.history[c.history.length - 1] : null;
+          const pkg = c.package || {};
+          const isDuration = pkg.packageType === 'duration';
+          const totalSessions = pkg.totalSessions || 10;
+          const usedSessions = pkg.sessionsUsed || 0;
+          const sessionsLeft = !isDuration ? Math.max(0, totalSessions - usedSessions) : null;
+          const balanceDue = pkg.balanceDue !== undefined ? pkg.balanceDue : Math.max(0, (pkg.totalAmount || pkg.price || 0) - (pkg.amountPaid || pkg.advancePayment || 0));
 
-            return `
-              <div class="sub-card p-3.5 space-y-3 border border-slate-800">
-                <div class="flex items-start justify-between gap-2">
-                  <div>
-                    <strong class="text-white text-sm font-bold block">${c.firstName} ${c.lastName}</strong>
-                    <span class="text-[11px] text-slate-400">${c.residence || ''}${c.residence && c.profession ? ' • ' : ''}${c.profession || ''}</span>
-                  </div>
-                  <span class="badge badge-neutral text-[10px]">${c.mainGoal}</span>
-                </div>
+          const theme = this.getGoalTheme(c.mainGoal);
+          const clientCode = `CP-${c.id.slice(-6).toUpperCase()}`;
+          const initials = `${c.firstName?.charAt(0) || ''}${c.lastName?.charAt(0) || ''}`.toUpperCase() || 'CP';
+          const progressPct = !isDuration ? Math.min(100, Math.round((usedSessions / totalSessions) * 100)) : 100;
 
-                <div class="grid grid-cols-3 gap-2 bg-[#0c1220] p-2 rounded-lg text-center text-xs">
-                  <div>
-                    <span class="text-[10px] text-slate-500 block">Contact</span>
-                    <span class="font-bold text-white font-mono text-[11px] truncate block">${c.phone || '--'}</span>
+          return `
+            <div class="glass-card p-4 space-y-3.5 ${theme.border} hover:border-slate-600 transition-all shadow-xl bg-slate-900/90">
+              
+              <!-- En-tête Client avec Avatar & Numéro ID -->
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-11 h-11 rounded-2xl ${theme.avatarBg} flex items-center justify-center font-black text-sm shrink-0 shadow-md">
+                    ${initials}
                   </div>
-                  <div>
-                    <span class="text-[10px] text-slate-500 block">Poids</span>
-                    <span class="font-bold text-white font-mono">${last ? `${last.weight} kg` : '--'}</span>
-                  </div>
-                  <div>
-                    <span class="text-[10px] text-slate-500 block">Forfait</span>
-                    <span class="font-bold ${isDuration ? 'text-emerald-400' : (sessionsLeft <= 2 ? 'text-amber-400' : 'text-emerald-400')} font-mono">
-                      ${isDuration ? `${pkg.durationMonths || 1}M` : `${sessionsLeft} rest.`}
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                      <strong class="text-white text-sm font-bold block truncate">${c.firstName} ${c.lastName}</strong>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-emerald-400 border border-slate-700 shrink-0">${clientCode}</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 block truncate">
+                      ${c.residence || 'Abidjan'}${c.profession ? ` • ${c.profession}` : ''}
                     </span>
                   </div>
                 </div>
 
-                <div class="flex items-center gap-2 pt-1">
-                  <button class="btn btn-primary btn-xs flex-1 py-2 font-bold" data-action="open-client" data-client-id="${c.id}">
-                    Ouvrir Dossier
-                  </button>
-                  <button class="btn btn-secondary btn-xs flex-1 py-2" data-action="print-ticket" data-client-id="${c.id}">
-                    Ticket Bilan
-                  </button>
+                <!-- Badge Objectif -->
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${theme.badge} shrink-0">
+                  ${c.mainGoal || 'Objectif'}
+                </span>
+              </div>
+
+              <!-- Métriques Clés : Contact, Poids, Solde -->
+              <div class="grid grid-cols-3 gap-2 bg-[#070b16] p-2.5 rounded-xl border border-slate-800 text-center text-xs">
+                <div>
+                  <span class="text-[9px] text-slate-500 block uppercase font-bold">Contact</span>
+                  <span class="font-bold text-slate-200 font-mono text-[11px] truncate block">${c.phone || '--'}</span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-slate-500 block uppercase font-bold">Poids</span>
+                  <span class="font-bold text-white font-mono">${last ? `${last.weight} kg` : '--'}</span>
+                </div>
+                <div>
+                  <span class="text-[9px] text-slate-500 block uppercase font-bold">Solde</span>
+                  <span class="font-bold ${balanceDue > 0 ? 'text-amber-400' : 'text-emerald-400'} font-mono text-[11px] truncate block">
+                    ${balanceDue > 0 ? `${Calculations.formatFCFA(balanceDue)}` : '✓ Réglé'}
+                  </span>
                 </div>
               </div>
-            `;
-          }).join('')}
-        </div>
 
-        <!-- VUE DESKTOP (Tableau classique) -->
-        <div class="hidden md:block glass-card overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs text-slate-300">
-              <thead class="bg-[#0c1220] text-slate-400 uppercase font-semibold border-b border-slate-800">
-                <tr>
-                  <th class="p-3">Athlète</th>
-                  <th class="p-3">Habitation / Profession</th>
-                  <th class="p-3">Objectif</th>
-                  <th class="p-3">Dernière Pesée</th>
-                  <th class="p-3">Forfait en Cours</th>
-                  <th class="p-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-800">
-                ${filtered.map(c => {
-                  const last = c.history && c.history.length > 0 ? c.history[c.history.length - 1] : null;
-                  const pkg = c.package || {};
-                  const isDuration = pkg.packageType === 'duration';
-                  const sessionsLeft = !isDuration ? Math.max(0, (pkg.totalSessions || 0) - (pkg.sessionsUsed || 0)) : null;
-                  
-                  return `
-                    <tr class="hover:bg-slate-800/40 transition-colors">
-                      <td class="p-3">
-                        <div class="font-bold text-white text-sm">${c.firstName} ${c.lastName}</div>
-                        <div class="text-[11px] text-slate-400">${c.phone || 'Pas de numéro'}</div>
-                      </td>
-                      <td class="p-3">
-                        <div class="text-white">${c.residence || '<span class="text-slate-500">Non renseigné</span>'}</div>
-                        <div class="text-[11px] text-slate-400">${c.profession || ''}</div>
-                      </td>
-                      <td class="p-3">
-                        <span class="badge badge-neutral">${c.mainGoal}</span>
-                      </td>
-                      <td class="p-3 font-mono">
-                        ${last ? `<span class="font-bold text-white">${last.weight} kg</span>` : '<span class="text-slate-500 italic">--</span>'}
-                      </td>
-                      <td class="p-3">
-                        ${isDuration ? `
-                          <span class="badge badge-emerald font-mono">
-                            ${pkg.durationMonths || 1} Mois (${pkg.sessionsUsed || 0} séances)
-                          </span>
-                        ` : `
-                          <span class="badge ${sessionsLeft <= 2 ? 'badge-amber' : 'badge-neutral'} font-mono">
-                            ${sessionsLeft} / ${pkg.totalSessions || 0} séances
-                          </span>
-                        `}
-                      </td>
-                      <td class="p-3 text-right space-x-1">
-                        <button class="btn btn-secondary btn-xs" data-action="print-ticket" data-client-id="${c.id}" title="Imprimer Ticket Bilan">
-                          Bilan
-                        </button>
-                        <button class="btn btn-primary btn-xs" data-action="open-client" data-client-id="${c.id}">
-                          Dossier
-                        </button>
-                      </td>
-                    </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              <!-- Jauge de Séances & Progression -->
+              <div class="space-y-1">
+                <div class="flex justify-between text-[11px] text-slate-400 font-semibold">
+                  <span>${isDuration ? `Forfait ${pkg.durationMonths || 1} Mois` : `Séances : ${usedSessions}/${totalSessions}`}</span>
+                  <span class="${isDuration ? 'text-emerald-400' : (sessionsLeft <= 2 ? 'text-amber-400' : 'text-slate-300')} font-mono font-bold">
+                    ${isDuration ? (pkg.expiryDate ? new Date(pkg.expiryDate).toLocaleDateString('fr-FR') : 'Actif') : `${sessionsLeft} restante(s)`}
+                  </span>
+                </div>
+                ${!isDuration ? `
+                  <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-emerald-500 transition-all duration-300" style="width: ${progressPct}%"></div>
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- Actions Rapides : Pointage 1-Clic, Dossier, Bilan -->
+              <div class="flex items-center gap-2 pt-1 border-t border-slate-800/80">
+                <button class="btn btn-emerald btn-xs flex-1 py-2 font-bold shadow-md btn-card-point" data-client-id="${c.id}" title="Pointer la présence">
+                  ⚡ Pointer
+                </button>
+                <button class="btn btn-primary btn-xs flex-1 py-2 font-bold shadow-md" data-action="open-client" data-client-id="${c.id}">
+                  📂 Dossier
+                </button>
+                <button class="btn btn-secondary btn-xs py-2 px-2.5" data-action="print-ticket" data-client-id="${c.id}" title="Imprimer Ticket Bilan">
+                  🖨️
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('')}
       </div>
     `;
 
@@ -207,9 +278,36 @@ export const ClientList = {
       this.searchQuery = e.target.value;
       this.renderClientsList(container);
     });
+
+    container.querySelectorAll('.filter-tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        this.activeFilter = e.currentTarget.getAttribute('data-filter');
+        container.querySelectorAll('.filter-tab-btn').forEach(b => {
+          b.className = 'filter-tab-btn px-3 py-1.5 rounded-xl font-bold transition-all bg-slate-800 text-slate-300 hover:text-white';
+        });
+        e.currentTarget.className = 'filter-tab-btn px-3 py-1.5 rounded-xl font-bold transition-all bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20';
+        this.renderClientsList(container);
+      });
+    });
   },
 
   bindRowActions(listContainer) {
+    listContainer.querySelectorAll('.btn-card-point').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const clientId = e.currentTarget.getAttribute('data-client-id');
+        const client = stateManager.getClientById(clientId);
+        if (!client) return;
+        stateManager.logSessionAttendance(clientId, {
+          date: new Date().toISOString().split('T')[0],
+          sessionType: 'Séance Coaching Privé',
+          notes: 'Pointage rapide depuis la liste'
+        });
+        window.App.showToast(`Séance pointée pour ${client.firstName} !`, 'success');
+        const parent = listContainer.closest('.client-list-view')?.parentElement;
+        if (parent) this.render(parent);
+      });
+    });
+
     listContainer.querySelectorAll('[data-action="open-client"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const clientId = e.currentTarget.getAttribute('data-client-id');
