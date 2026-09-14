@@ -2818,21 +2818,10 @@ const LicenseManager = {
       };
     }
 
-    // Format attendu : CP-[TYPE]-[EXP_B36]-[DEV_HASH]-[SIG]
+    // Format attendu strict : CP-[TYPE]-[EXP_B36]-[DEV_HASH]-[SIG]
     const parts = cleanInput.split('-');
     if (parts.length < 5 || parts[0] !== 'CP') {
-      // Support rétro-compatible clés V1
-      if (cleanInput.startsWith('KEY-') || cleanInput.includes('LIFETIME')) {
-        return {
-          valid: true,
-          type: 'LIFE',
-          typeName: 'Licence Professionnelle à Vie',
-          isLifetime: true,
-          daysRemaining: 9999,
-          expiryFormatted: 'Illimitée'
-        };
-      }
-      return { valid: false, reason: 'Format de clé invalide' };
+      return { valid: false, reason: 'Format de clé invalide (doit commencer par CP-)' };
     }
 
     const [, type, expBase36, devHash, sig] = parts;
@@ -2919,6 +2908,22 @@ const LicenseManager = {
       return { success: true, info: result };
     }
     return { success: false, reason: result.reason || 'Clé non valide' };
+  },
+
+  /**
+   * Réinitialise complètement la licence à zéro pour tester (Essai 5 jours ou Verrouillage)
+   */
+  resetLicenseForTesting(startFreshTrial = true) {
+    localStorage.removeItem(LICENSE_KEY_STORAGE);
+    localStorage.removeItem('coachpro_license_key_v1');
+    localStorage.removeItem('coachpro_license_status');
+    localStorage.removeItem(TRIAL_STORAGE);
+    localStorage.removeItem(LAST_ACTIVE_TS_STORAGE);
+    
+    if (startFreshTrial) {
+      return this.getTrialStatus();
+    }
+    return null;
   },
 
   /**
@@ -8903,14 +8908,16 @@ const SettingsModal = {
                 id="input-settings-license-key" 
                 placeholder="ex: CP-Y1-..." 
                 class="input text-xs font-mono font-bold uppercase text-white bg-slate-950 flex-1" 
-                required 
-              />
-              <button type="submit" class="btn btn-primary btn-sm font-bold shrink-0">
-                Activer
-              </button>
-            </div>
             <div id="settings-license-msg" class="text-[11px] font-semibold min-h-[1rem]"></div>
           </form>
+
+          <!-- Boutons de Test de Licence -->
+          <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+            <span class="text-[11px] text-slate-400">Tester le cycle de licence :</span>
+            <button type="button" id="btn-reset-license-test" class="btn btn-outline btn-xs font-bold text-amber-400 hover:text-amber-300">
+              🔄 Remettre à Zéro (Test Essai 5j)
+            </button>
+          </div>
         </div>
 
         <!-- 5. SAUVEGARDE COMPLÈTE & RESTAURATION -->
@@ -9168,6 +9175,17 @@ const SettingsModal = {
       } else {
         msgDiv.className = 'text-[11px] font-bold text-rose-400';
         msgDiv.textContent = `❌ ${res.reason || 'Clé de licence invalide pour cet appareil.'}`;
+      }
+    });
+
+    const resetLicenseBtn = document.getElementById('btn-reset-license-test');
+    resetLicenseBtn?.addEventListener('click', () => {
+      LicenseManager.resetLicenseForTesting();
+      window.App?.showToast?.('Licence remise à zéro : Essai 5 jours actif !', 'info');
+      this.render();
+      this.bindEvents();
+      if (window.App && typeof window.App.renderCurrentView === 'function') {
+        window.App.renderCurrentView();
       }
     });
 

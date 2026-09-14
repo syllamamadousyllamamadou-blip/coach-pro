@@ -258,21 +258,10 @@ export const LicenseManager = {
       };
     }
 
-    // Format attendu : CP-[TYPE]-[EXP_B36]-[DEV_HASH]-[SIG]
+    // Format attendu strict : CP-[TYPE]-[EXP_B36]-[DEV_HASH]-[SIG]
     const parts = cleanInput.split('-');
     if (parts.length < 5 || parts[0] !== 'CP') {
-      // Support rétro-compatible clés V1
-      if (cleanInput.startsWith('KEY-') || cleanInput.includes('LIFETIME')) {
-        return {
-          valid: true,
-          type: 'LIFE',
-          typeName: 'Licence Professionnelle à Vie',
-          isLifetime: true,
-          daysRemaining: 9999,
-          expiryFormatted: 'Illimitée'
-        };
-      }
-      return { valid: false, reason: 'Format de clé invalide' };
+      return { valid: false, reason: 'Format de clé invalide (doit commencer par CP-)' };
     }
 
     const [, type, expBase36, devHash, sig] = parts;
@@ -359,6 +348,22 @@ export const LicenseManager = {
       return { success: true, info: result };
     }
     return { success: false, reason: result.reason || 'Clé non valide' };
+  },
+
+  /**
+   * Réinitialise complètement la licence à zéro pour tester (Essai 5 jours ou Verrouillage)
+   */
+  resetLicenseForTesting(startFreshTrial = true) {
+    localStorage.removeItem(LICENSE_KEY_STORAGE);
+    localStorage.removeItem('coachpro_license_key_v1');
+    localStorage.removeItem('coachpro_license_status');
+    localStorage.removeItem(TRIAL_STORAGE);
+    localStorage.removeItem(LAST_ACTIVE_TS_STORAGE);
+    
+    if (startFreshTrial) {
+      return this.getTrialStatus();
+    }
+    return null;
   },
 
   /**

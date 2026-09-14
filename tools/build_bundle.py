@@ -17,7 +17,8 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 JS_DIR = os.path.join(BASE_DIR, 'js')
 OUTPUT_BUNDLE = os.path.join(JS_DIR, 'bundle.js')
 ANDROID_ASSETS_DIR = os.path.join(BASE_DIR, 'android', 'app', 'src', 'main', 'assets')
-OUTPUT_APK = os.path.join(BASE_DIR, 'coachpro.apk')
+APK_DIR = os.path.join(BASE_DIR, 'apk')
+OUTPUT_APK = os.path.join(APK_DIR, 'coachpro.apk')
 DEBUG_KEYSTORE = os.path.expanduser('~/.android/debug.keystore')
 
 ZIPALIGN_BIN = '/Users/mac/Android/sdk/build-tools/34.0.0/zipalign'
@@ -77,10 +78,11 @@ def clean_module_code(code: str, file_rel: str) -> str:
     return header + code.strip() + "\n"
 
 def rebuild_apk():
-    print("[*] Rebuilding Android APK (coachpro.apk) with fresh web assets...")
+    os.makedirs(APK_DIR, exist_ok=True)
+    print(f"[*] Rebuilding Android APK ({OUTPUT_APK}) with fresh web assets...")
     source_apk = os.path.join(BASE_DIR, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
     if not os.path.exists(source_apk):
-        source_apk = OUTPUT_APK
+        source_apk = OUTPUT_APK if os.path.exists(OUTPUT_APK) else os.path.join(BASE_DIR, 'coachpro.apk')
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         extracted_apk = os.path.join(tmp_dir, 'extracted')
