@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>COACH PRO — Master License Studio (Admin)</title>
+  <meta name="theme-color" content="#070b16" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #070b16;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(51, 65, 85, 0.6);
+      border-radius: 1.25rem;
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8 flex flex-col items-center justify-center select-none">
+
+  <!-- =========================================================================
+       1. ÉCRAN DE VERROUILLAGE MASTER ADMIN (SÉCURITÉ HÉBERGEMENT EN LIGNE)
+       ========================================================================= -->
+  <div id="auth-lock-screen" class="max-w-md w-full glass-panel p-6 sm:p-8 space-y-6 text-center shadow-2xl border-t-4 border-emerald-500 animate-fade-in">
+    <div class="space-y-2">
+      <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400 text-3xl shadow-lg shadow-emerald-500/10">
+        🔐
+      </div>
+      <h1 class="text-xl font-black text-white tracking-wide">Accès Créateur Master</h1>
+      <p class="text-xs text-slate-400">Portail privé de génération de licences sécurisées</p>
+    </div>
+
+    <form id="form-auth" class="space-y-4 text-left">
+      <div>
+        <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+          Code Secret Administrateur *
+        </label>
+        <input 
+          type="password" 
+          id="input-auth-pin" 
+          placeholder="Entrez votre code secret..." 
+          class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500 text-center tracking-widest text-lg"
+          required 
+          autocomplete="off"
+        />
+      </div>
+
+      <div id="auth-error-msg" class="text-xs text-rose-400 font-semibold min-h-[1.2rem] text-center"></div>
+
+      <button 
+        type="submit" 
+        class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/20 text-sm tracking-wide transition-all transform active:scale-95"
+      >
+        Déverrouiller le Studio Admin
+      </button>
+    </form>
+  </div>
+
+
+  <!-- =========================================================================
+       2. STUDIO GÉNÉRATEUR PRINCIPAL (AFFICHÉ APRÈS AUTHENTIFICATION)
+       ========================================================================= -->
+  <div id="main-admin-studio" class="hidden max-w-2xl w-full space-y-6 animate-fade-in">
+    
+    <!-- En-tête avec Bouton Déconnexion -->
+    <div class="flex items-center justify-between glass-panel p-4 px-6 border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl font-bold">
+          🛡️
+        </div>
+        <div>
+          <h2 class="text-base font-black text-white leading-tight">
+            COACH <span class="text-emerald-400">PRO</span> — Master Studio
+          </h2>
+          <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+            Générateur Cryptographique Certifié
+          </span>
+        </div>
+      </div>
+
+      <button id="btn-logout" class="text-xs font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg">
+        🔒 Déconnexion
+      </button>
+    </div>
+
+    <!-- Formulaire de Génération de Licence -->
+    <div class="glass-panel p-6 sm:p-8 space-y-6 shadow-2xl border-t-4 border-emerald-500">
+      
+      <form id="form-generator" class="space-y-4">
+        
+        <!-- 1. Device ID du Client -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+            📱 Identifiant Unique du Client (Device ID) *
+          </label>
+          <input 
+            type="text" 
+            id="input-device-id" 
+            placeholder="ex: CP-4F9A-7B2C-9E1D" 
+            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500 uppercase tracking-wider" 
+            required 
+            autocomplete="off"
+          />
+          <span class="text-[11px] text-slate-500 mt-1 block">
+            Collez le Device ID que le coach vous a envoyé par WhatsApp.
+          </span>
+        </div>
+
+        <!-- 2. Formule de Licence -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              ⏱️ Formule de Licence *
+            </label>
+            <select 
+              id="select-plan-type" 
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-emerald-500"
+            >
+              <option value="TRIAL">⚡ Essai Gratuit (5 Jours)</option>
+              <option value="M1" selected>📅 1 Mois / 30 Jours (Abonnement)</option>
+              <option value="Y1">🌟 1 An / 365 Jours (Annuel)</option>
+              <option value="LIFE">♾️ À Vie / Illimitée (Lifetime Master)</option>
+              <option value="CUSTOM">⚙️ Durée Personnalisée (en Jours)</option>
+            </select>
+          </div>
+
+          <div id="container-custom-days" class="hidden">
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              🔢 Nombre de Jours Personnalisé
+            </label>
+            <input 
+              type="number" 
+              id="input-custom-days" 
+              placeholder="ex: 90" 
+              min="1" 
+              max="3650" 
+              value="90"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm font-mono font-bold text-white focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        <!-- 3. Nom de l'Athlète / Coach (Optionnel pour mémo) -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+            👤 Nom du Coach / Client (Optionnel)
+          </label>
+          <input 
+            type="text" 
+            id="input-client-name" 
+            placeholder="ex: Coach Sylla" 
+            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm font-semibold text-white focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        <!-- 4. Bouton Générer -->
+        <button 
+          type="submit" 
+          class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3.5 px-4 rounded-xl shadow-lg shadow-emerald-500/20 text-sm tracking-wide flex items-center justify-center gap-2 transition-all transform active:scale-95"
+        >
+          <span>🔐</span> Générer la Clé de Licence Cryptographique
+        </button>
+      </form>
+
+      <!-- Résultat Généré -->
+      <div id="result-box" class="hidden space-y-4 pt-4 border-t border-slate-800 animate-fade-in">
+        
+        <div class="bg-slate-950/90 border border-emerald-500/40 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+              ✓ Clé de Licence Générée avec Succès :
+            </span>
+            <span id="badge-validity" class="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Certifiée Conforme
+            </span>
+          </div>
+
+          <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-2">
+            <span id="output-license-key" class="font-mono text-xs sm:text-sm font-black text-white select-all break-all"></span>
+            <button id="btn-copy-key" class="shrink-0 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1">
+              <span>📋</span> Copier
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-xs text-slate-400 pt-1">
+            <div>Type : <strong id="output-plan-name" class="text-white"></strong></div>
+            <div>Expiration : <strong id="output-expiry-date" class="text-white"></strong></div>
+          </div>
+        </div>
+
+        <!-- Bouton Envoi WhatsApp Prêt à l'Emploi -->
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button id="btn-copy-whatsapp-text" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
+            <span>💬</span> Copier le Message WhatsApp Prêt à Envoyer
+          </button>
+          <a id="btn-open-whatsapp" href="#" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-700">
+            <span>🚀</span> Ouvrir WhatsApp
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Note de Sécurité -->
+    <div class="text-center text-[11px] text-slate-500">
+      COACH PRO Master Security Engine • SHA-256 Cryptographic System • Clé Secrète Maître Protégée
+    </div>
+
+  </div>
+
+  <script>
+    const MASTER_SALT = 'COACH_PRO_2026_MASTER_SECRET_KEY_PRO_EDITION_SECURE_AFRICA';
+    // Code PIN Maître du Créateur (par défaut 5008 ou MASTER2026)
+    const VALID_ADMIN_PINS = ['5008', 'MASTER2026', 'COACHPRO2026'];
+
+    // Gestion de Session Sécurisée
+    const authScreen = document.getElementById('auth-lock-screen');
+    const studioScreen = document.getElementById('main-admin-studio');
+    const formAuth = document.getElementById('form-auth');
+    const inputAuthPin = document.getElementById('input-auth-pin');
+    const authErrorMsg = document.getElementById('auth-error-msg');
+    const btnLogout = document.getElementById('btn-logout');
+
+    function checkSession() {
+      if (sessionStorage.getItem('coachpro_admin_authenticated') === 'true') {
+        authScreen.classList.add('hidden');
+        studioScreen.classList.remove('hidden');
+      } else {
+        authScreen.classList.remove('hidden');
+        studioScreen.classList.add('hidden');
+      }
+    }
+
+    formAuth.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const entered = inputAuthPin.value.trim().toUpperCase();
+      if (VALID_ADMIN_PINS.includes(entered)) {
+        sessionStorage.setItem('coachpro_admin_authenticated', 'true');
+        authErrorMsg.textContent = '';
+        checkSession();
+      } else {
+        authErrorMsg.textContent = '❌ Code Secret incorrect. Accès refusé.';
+      }
+    });
+
+    btnLogout.addEventListener('click', () => {
+      sessionStorage.removeItem('coachpro_admin_authenticated');
+      checkSession();
+    });
+
+    checkSession();
+
+    // Implémentation SHA-256 pure JS
+    function sha256(ascii) {
+      function rightRotate(value, amount) {
+        return (value >>> amount) | (value << (32 - amount));
+      }
+      const mathPow = Math.pow;
+      let lengthProperty = 'length';
+      let i, j;
+      let result = '';
+      const words = [];
+      const asciiBitLength = ascii[lengthProperty] * 8;
+      let hash = [
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+      ];
+      const k = [
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0bef9a3f, 0xc67178f2
+      ];
+
+      let compositeBitLength = asciiBitLength;
+      words[compositeBitLength >> 5] |= 0x80 << (24 - compositeBitLength % 32);
+      words[(((compositeBitLength + 64) >> 9) << 4) + 15] = compositeBitLength;
+
+      for (i = 0; i < ascii[lengthProperty]; i++) {
+        words[i >> 2] |= ascii.charCodeAt(i) << (24 - (i % 4) * 8);
+      }
+
+      for (j = 0; j < words[lengthProperty]; j += 16) {
+        const w = words.slice(j, j + 16);
+        const oldHash = hash.slice(0);
+
+        for (i = 0; i < 64; i++) {
+          let w15 = w[i - 15], w2 = w[i - 2];
+          const s0 = rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3);
+          const s1 = rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10);
+          w[i] = (i < 16) ? (w[i] || 0) : ((w[i - 16] + s0 + w[i - 7] + s1) | 0);
+
+          const ch = (hash[4] & hash[5]) ^ (~hash[4] & hash[6]);
+          const maj = (hash[0] & hash[1]) ^ (hash[0] & hash[2]) ^ (hash[1] & hash[2]);
+          const sA = rightRotate(hash[0], 2) ^ rightRotate(hash[0], 13) ^ rightRotate(hash[0], 22);
+          const sE = rightRotate(hash[4], 6) ^ rightRotate(hash[4], 11) ^ rightRotate(hash[4], 25);
+
+          const temp1 = (hash[7] + sE + ch + k[i] + w[i]) | 0;
+          const temp2 = (sA + maj) | 0;
+
+          hash = [(temp1 + temp2) | 0, hash[0], hash[1], hash[2], (hash[3] + temp1) | 0, hash[4], hash[5], hash[6]];
+        }
+
+        for (i = 0; i < 8; i++) {
+          hash[i] = (hash[i] + oldHash[i]) | 0;
+        }
+      }
+
+      for (i = 0; i < 8; i++) {
+        for (j = 3; j >= 0; j--) {
+          const b = (hash[i] >> (8 * j)) & 255;
+          result += (b < 16 ? '0' : '') + b.toString(16);
+        }
+      }
+      return result;
+    }
+
+    function cleanDeviceId(raw) {
+      return (raw || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    }
+
+    function generateKey(deviceId, type, customDays) {
+      const cleanDevId = cleanDeviceId(deviceId);
+      const devHash = sha256(`DEV_${cleanDevId}_${MASTER_SALT}`).slice(0, 4).toUpperCase();
+      let expBase36 = 'LIFETIME';
+      let expTimestamp = 0;
+
+      const now = Date.now();
+      if (type === 'TRIAL') {
+        expTimestamp = now + (5 * 24 * 60 * 60 * 1000);
+        expBase36 = expTimestamp.toString(36).toUpperCase();
+      } else if (type === 'M1') {
+        expTimestamp = now + (30 * 24 * 60 * 60 * 1000);
+        expBase36 = expTimestamp.toString(36).toUpperCase();
+      } else if (type === 'Y1') {
+        expTimestamp = now + (365 * 24 * 60 * 60 * 1000);
+        expBase36 = expTimestamp.toString(36).toUpperCase();
+      } else if (type === 'CUSTOM') {
+        expTimestamp = now + (parseInt(customDays || 30, 10) * 24 * 60 * 60 * 1000);
+        expBase36 = expTimestamp.toString(36).toUpperCase();
+      } else if (type === 'LIFE') {
+        expBase36 = 'LIFETIME';
+      }
+
+      const payload = `${cleanDevId}|${type}|${expBase36}|${MASTER_SALT}`;
+      const sig = sha256(payload).slice(0, 8).toUpperCase();
+
+      return {
+        key: `CP-${type}-${expBase36}-${devHash}-${sig}`,
+        expTimestamp: expTimestamp,
+        isLifetime: (type === 'LIFE')
+      };
+    }
+
+    // UI Logic
+    const selectPlan = document.getElementById('select-plan-type');
+    const containerCustom = document.getElementById('container-custom-days');
+    const form = document.getElementById('form-generator');
+    const resultBox = document.getElementById('result-box');
+    const outKey = document.getElementById('output-license-key');
+    const outPlan = document.getElementById('output-plan-name');
+    const outExpiry = document.getElementById('output-expiry-date');
+    const btnCopyKey = document.getElementById('btn-copy-key');
+    const btnCopyWa = document.getElementById('btn-copy-whatsapp-text');
+    const btnOpenWa = document.getElementById('btn-open-whatsapp');
+
+    selectPlan.addEventListener('change', () => {
+      if (selectPlan.value === 'CUSTOM') {
+        containerCustom.classList.remove('hidden');
+      } else {
+        containerCustom.classList.add('hidden');
+      }
+    });
+
+    let currentPayload = null;
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const devId = document.getElementById('input-device-id').value.trim();
+      const clientName = document.getElementById('input-client-name').value.trim();
+      const plan = selectPlan.value;
+      const customDays = document.getElementById('input-custom-days').value;
+
+      if (!devId) return;
+
+      const res = generateKey(devId, plan, customDays);
+
+      let planName = 'Abonnement 1 Mois (30 Jours)';
+      if (plan === 'TRIAL') planName = 'Essai Gratuit (5 Jours)';
+      else if (plan === 'Y1') planName = 'Abonnement Annuel (1 An)';
+      else if (plan === 'LIFE') planName = 'Licence Professionnelle à Vie (Illimitée)';
+      else if (plan === 'CUSTOM') planName = `Licence Personnalisée (${customDays} Jours)`;
+
+      let expiryText = 'Illimitée';
+      if (!res.isLifetime && res.expTimestamp) {
+        expiryText = new Date(res.expTimestamp).toLocaleDateString('fr-FR', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+      }
+
+      outKey.textContent = res.key;
+      outPlan.textContent = planName;
+      outExpiry.textContent = expiryText;
+
+      const greeting = clientName ? `Bonjour ${clientName},\n` : `Bonjour Coach,\n`;
+      const waMsg = `🏆 *ACTIVATION OFFICIELLE COACH PRO* 🏆\n\n` +
+        greeting +
+        `👤 *Formule :* ${planName}\n` +
+        `📱 *Appareil (Device ID) :* ${devId}\n` +
+        `🔑 *Votre Clé de Licence :* \`${res.key}\`\n` +
+        `⏳ *Validité :* ${expiryText}\n\n` +
+        `*Instructions simples :*\n` +
+        `1. Ouvrez COACH PRO sur votre tablette/téléphone.\n` +
+        `2. Collez cette clé dans l'écran de déverrouillage ou dans Paramètres > Licence.\n` +
+        `3. Cliquez sur "Activer l'Application".\n\n` +
+        `Bon coaching & plein succès avec vos athlètes ! 💪`;
+
+      currentPayload = {
+        key: res.key,
+        waText: waMsg
+      };
+
+      btnOpenWa.href = `https://wa.me/?text=${encodeURIComponent(waMsg)}`;
+      resultBox.classList.remove('hidden');
+    });
+
+    btnCopyKey.addEventListener('click', () => {
+      if (currentPayload?.key) {
+        navigator.clipboard.writeText(currentPayload.key).then(() => {
+          btnCopyKey.textContent = '✓ Copié !';
+          setTimeout(() => { btnCopyKey.innerHTML = '<span>📋</span> Copier'; }, 2000);
+        });
+      }
+    });
+
+    btnCopyWa.addEventListener('click', () => {
+      if (currentPayload?.waText) {
+        navigator.clipboard.writeText(currentPayload.waText).then(() => {
+          btnCopyWa.textContent = '✓ Message WhatsApp Copié !';
+          setTimeout(() => { btnCopyWa.innerHTML = '<span>💬</span> Copier le Message WhatsApp Prêt à Envoyer'; }, 2000);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
