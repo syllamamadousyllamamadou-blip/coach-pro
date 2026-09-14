@@ -16,7 +16,8 @@ const EMPTY_COACH_PROFILE = {
   phone: '',
   email: '',
   city: '',
-  motto: ''
+  motto: '',
+  photo: ''
 };
 
 class StateManager {

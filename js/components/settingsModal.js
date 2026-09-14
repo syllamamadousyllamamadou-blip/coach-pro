@@ -131,8 +131,38 @@ export const SettingsModal = {
         <!-- 2. PROFIL DU COACH & EN-TÊTE DES REÇUS -->
         <form id="form-coach-profile" class="glass-card p-5 space-y-4">
           <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <span>👤</span> Profil du Coach &amp; Coordonnées sur les Tickets
+            <span>👤</span> Profil du Coach, Photo &amp; Coordonnées
           </h4>
+
+          <!-- Zone Photo de Profil Coach -->
+          <div class="flex items-center gap-4 p-3.5 bg-slate-900/90 rounded-2xl border border-slate-800">
+            <div class="relative w-16 h-16 rounded-2xl overflow-hidden bg-slate-950 border-2 border-emerald-500/40 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/10">
+              ${coach.photo ? `
+                <img id="coach-photo-preview" src="${coach.photo}" alt="Photo Coach" class="w-full h-full object-cover" />
+              ` : `
+                <span id="coach-photo-placeholder" class="text-2xl">🏋️‍♂️</span>
+                <img id="coach-photo-preview" src="" alt="Photo Coach" class="w-full h-full object-cover hidden" />
+              `}
+            </div>
+
+            <div class="space-y-1.5 flex-1">
+              <span class="text-xs font-bold text-white block">Photo de Profil &amp; Logo</span>
+              <p class="text-[11px] text-slate-400">S'affiche sur le tableau de bord, la barre latérale et vos fiches de suivi.</p>
+              
+              <div class="flex flex-wrap items-center gap-2 pt-1">
+                <label class="btn btn-primary btn-xs font-bold cursor-pointer flex items-center gap-1">
+                  <span>📷</span>
+                  <span>Changer Photo</span>
+                  <input type="file" id="input-coach-photo" accept="image/*" class="hidden" />
+                </label>
+                ${coach.photo ? `
+                  <button type="button" id="btn-remove-coach-photo" class="btn btn-outline btn-xs text-rose-400 hover:text-rose-300 font-bold">
+                    Supprimer
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -173,7 +203,7 @@ export const SettingsModal = {
           </div>
 
           <div class="flex justify-end pt-1">
-            <button type="submit" class="btn btn-primary btn-sm font-bold">Enregistrer les Coordonnées</button>
+            <button type="submit" class="btn btn-primary btn-sm font-bold">Enregistrer le Profil</button>
           </div>
         </form>
 
@@ -375,7 +405,45 @@ export const SettingsModal = {
       }
     });
 
-    // 1. Profil Coach
+    // 1. Profil Coach & Photo
+    const photoInput = document.getElementById('input-coach-photo');
+    photoInput?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (re) => {
+          const img = new Image();
+          img.onload = () => {
+            // Compression & recadrage carré pour performance
+            const canvas = document.createElement('canvas');
+            const size = Math.min(img.width, img.height);
+            canvas.width = 300;
+            canvas.height = 300;
+            const ctx = canvas.getContext('2d');
+            const startX = (img.width - size) / 2;
+            const startY = (img.height - size) / 2;
+            ctx.drawImage(img, startX, startY, size, size, 0, 0, 300, 300);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+            stateManager.updateCoachProfile({ photo: compressedDataUrl });
+            window.App?.showToast?.('Photo de profil mise à jour !', 'success');
+            this.render();
+            this.bindEvents();
+          };
+          img.src = re.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    const removePhotoBtn = document.getElementById('btn-remove-coach-photo');
+    removePhotoBtn?.addEventListener('click', () => {
+      stateManager.updateCoachProfile({ photo: '' });
+      window.App?.showToast?.('Photo supprimée', 'info');
+      this.render();
+      this.bindEvents();
+    });
+
     const profileForm = document.getElementById('form-coach-profile');
     profileForm?.addEventListener('submit', (e) => {
       e.preventDefault();

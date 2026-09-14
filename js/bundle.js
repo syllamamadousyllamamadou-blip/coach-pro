@@ -943,7 +943,8 @@ const EMPTY_COACH_PROFILE = {
   phone: '',
   email: '',
   city: '',
-  motto: ''
+  motto: '',
+  photo: ''
 };
 
 class StateManager {
@@ -6565,9 +6566,10 @@ const QuickTools = {
    MODULE: components/qrScanner.js
    ========================================================================== */
 /**
- * qrScanner.js - Lecteur & Scanner Universel de Code QR par Caméra pour COACH PRO
- * Décodage 100% autonome et infaillible via Canvas + jsQR intégré.
- * Fonctionne parfaitement sur TOUTES les versions d'Android, tablettes et navigateurs.
+ * qrScanner.js - Lecteur & Scanner Universel de Code QR Haute Performance pour COACH PRO
+ * - Détection Vidéo Directe Temps Réel avec jsQR + Rehaussement de contraste pour tickets thermiques
+ * - Capture Photo Directe Native (Fallback infaillible pour tous téléphones et tablettes)
+ * - Décodage instantané des reçus, des fiches clients et pointage automatique des séances
  */
 const QRScannerComponent = {
   videoStream: null,
@@ -6585,30 +6587,30 @@ const QRScannerComponent = {
 
     modal.classList.remove('hidden');
     modal.innerHTML = `
-      <div class="glass-card max-w-md w-full p-5 space-y-4 border-t-4 border-emerald-500 shadow-2xl relative">
+      <div class="glass-card max-w-md w-full p-5 space-y-4 border-t-4 border-emerald-500 shadow-2xl relative animate-fade-in">
         
         <!-- En-tête -->
         <div class="flex items-center justify-between pb-2 border-b border-slate-800">
           <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm">
+            <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-lg shadow-lg shadow-emerald-500/10">
               🔲
             </div>
             <div>
               <h3 class="text-sm font-bold text-white">Scanner un Reçu / Athlète</h3>
-              <p class="text-[11px] text-slate-400">Pointez la caméra vers le QR Code du ticket ou du client</p>
+              <p class="text-[11px] text-slate-400">Pointez la caméra vers le QR Code du ticket</p>
             </div>
           </div>
           <button id="btn-close-qr-scanner" class="text-slate-400 hover:text-white text-lg p-1 font-bold">✕</button>
         </div>
 
-        <!-- Zone Vidéo Caméra avec Viseur & Détection Temps Réel -->
+        <!-- Zone Vidéo Caméra avec Viseur Haute Précision -->
         <div class="relative w-full aspect-square rounded-2xl overflow-hidden bg-black border border-slate-800 flex items-center justify-center shadow-inner">
           <video id="qr-video-feed" playsinline autoplay muted class="w-full h-full object-cover"></video>
           
           <!-- Viseur Visuel -->
           <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
             <div class="w-3/4 h-3/4 border-2 border-emerald-400/80 rounded-2xl relative shadow-lg">
-              <!-- Coins du viseur -->
+              <!-- Coins renforcés du viseur -->
               <div class="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-emerald-400"></div>
               <div class="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-emerald-400"></div>
               <div class="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-emerald-400"></div>
@@ -6621,16 +6623,29 @@ const QRScannerComponent = {
 
           <!-- Message Statut Caméra -->
           <div id="qr-camera-status" class="absolute bottom-3 inset-x-3 bg-slate-950/85 backdrop-blur-md rounded-xl p-2 text-center text-xs text-slate-200 border border-slate-800 font-medium">
-            Initialisation de la caméra...
+            Démarrage de la caméra...
           </div>
         </div>
 
+        <!-- Boutons d'Action Rapide : Photo Directe & Manuel -->
+        <div class="grid grid-cols-2 gap-2">
+          <label class="btn btn-secondary btn-sm flex items-center justify-center gap-1.5 font-bold cursor-pointer">
+            <span>📷</span>
+            <span>Prendre Photo</span>
+            <input type="file" id="input-qr-file-capture" accept="image/*" capture="environment" class="hidden" />
+          </label>
+          <button type="button" id="btn-switch-camera" class="btn btn-outline btn-sm flex items-center justify-center gap-1.5 font-bold">
+            <span>🔄</span>
+            <span>Changer Caméra</span>
+          </button>
+        </div>
+
         <!-- Recherche Manuelle de Secours -->
-        <div class="pt-2 border-t border-slate-800 space-y-2">
-          <span class="text-[11px] text-slate-400 block font-semibold">Ou saisie manuelle de l'identifiant du reçu / client :</span>
+        <div class="pt-2 border-t border-slate-800 space-y-1.5">
+          <span class="text-[11px] text-slate-400 block font-semibold">Recherche par Nom, Tél ou Code Reçu (ex: CP-123456) :</span>
           <div class="flex gap-2">
-            <input type="text" id="manual-qr-input" placeholder="ex: client_1710000000 ou Nom" class="input text-xs font-mono" />
-            <button id="btn-manual-qr-search" class="btn btn-secondary btn-sm shrink-0 font-bold">Rechercher</button>
+            <input type="text" id="manual-qr-input" placeholder="ex: Mamadou ou 849201" class="input text-xs font-mono flex-1" />
+            <button id="btn-manual-qr-search" class="btn btn-primary btn-sm shrink-0 font-bold">Valider</button>
           </div>
         </div>
       </div>
@@ -6640,43 +6655,51 @@ const QRScannerComponent = {
     this.startCamera(modal);
   },
 
+  currentFacingMode: 'environment',
+
   async startCamera(modal) {
     const video = modal.querySelector('#qr-video-feed');
     const status = modal.querySelector('#qr-camera-status');
 
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        if (status) status.innerHTML = `<span class="text-slate-400">Caméra désactivée. Utilisez la saisie manuelle ci-dessous.</span>`;
-        return;
+    this.stopCamera();
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (status) status.innerHTML = `<span class="text-amber-400">Caméra vidéo directe non supportée. Utilisez le bouton "Prendre Photo" ci-dessous.</span>`;
+      return;
+    }
+
+    // Stratégie de connexion multi-niveaux pour compatibilité 100% Android
+    const constraintLevels = [
+      { video: { facingMode: { ideal: this.currentFacingMode }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+      { video: { facingMode: this.currentFacingMode } },
+      { video: { facingMode: 'environment' } },
+      { video: true }
+    ];
+
+    let stream = null;
+    for (const constraints of constraintLevels) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (stream) break;
+      } catch (err) {
+        // Essayer le niveau suivant
       }
+    }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
-
+    if (stream && video) {
       this.videoStream = stream;
-      if (video) {
-        video.setAttribute('autoplay', '');
-        video.setAttribute('muted', '');
-        video.setAttribute('playsinline', '');
-        video.srcObject = stream;
-        try {
-          await video.play();
-        } catch (playErr) {
-          console.log('Lecture vidéo démarrée:', playErr);
-        }
-        if (status) status.textContent = 'Pointez le code QR du reçu ou du client dans le viseur.';
-        this.startDetection(video, modal);
-      }
-    } catch (err) {
-      console.log('Info caméra scanner:', err.message);
+      video.setAttribute('autoplay', '');
+      video.setAttribute('muted', '');
+      video.setAttribute('playsinline', '');
+      video.srcObject = stream;
+      try {
+        await video.play();
+      } catch (e) {}
+      if (status) status.textContent = 'Pointez le QR code du ticket dans le cadre vert.';
+      this.startDetection(video, modal);
+    } else {
       if (status) {
-        status.innerHTML = `<span class="text-slate-300">Caméra non connectée. Entrez l'identifiant ci-dessous.</span>`;
+        status.innerHTML = `<span class="text-amber-400">Accès caméra restreint. Cliquez sur <strong>"📷 Prendre Photo"</strong> pour scanner le reçu.</span>`;
       }
     }
   },
@@ -6690,29 +6713,40 @@ const QRScannerComponent = {
 
     this.scanInterval = setInterval(() => {
       try {
-        if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+        if (video && video.readyState >= video.HAVE_CURRENT_DATA) {
           const w = video.videoWidth;
           const h = video.videoHeight;
           if (w > 0 && h > 0) {
-            // Échantillonnage optimisé
             canvas.width = Math.min(w, 640);
             canvas.height = Math.min(h, 480);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-            // 1. Décodage ultra-rapide avec jsQR (Supporte contrastes direct et inversé)
+            // 1. Décodage standard jsQR
             if (typeof window.jsQR === 'function') {
-              const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+              let code = window.jsQR(imageData.data, imageData.width, imageData.height, {
                 inversionAttempts: 'attemptBoth'
               });
+
+              if (code && code.data) {
+                this.handleDecodedCode(code.data, modal);
+                return;
+              }
+
+              // 2. Détection avec rehaussement de contraste pour tickets thermiques
+              const binarized = this.binarizeImageData(imageData);
+              code = window.jsQR(binarized.data, binarized.width, binarized.height, {
+                inversionAttempts: 'dontInvert'
+              });
+
               if (code && code.data) {
                 this.handleDecodedCode(code.data, modal);
                 return;
               }
             }
 
-            // 2. Détection alternative native si dispo
+            // 3. Détection native BarcodeDetector si supportée
             if ('BarcodeDetector' in window) {
               const detector = new window.BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13'] });
               detector.detect(canvas).then(barcodes => {
@@ -6723,10 +6757,66 @@ const QRScannerComponent = {
             }
           }
         }
-      } catch (e) {
-        // En cas d'erreur de lecture d'une frame, continuer
-      }
-    }, 120);
+      } catch (e) {}
+    }, 90);
+  },
+
+  /**
+   * Binarisation / Rehaussement de contraste pour lire les tickets thermiques
+   */
+  binarizeImageData(imageData) {
+    const d = new Uint8ClampedArray(imageData.data);
+    const len = d.length;
+    for (let i = 0; i < len; i += 4) {
+      const gray = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114);
+      const val = gray < 128 ? 0 : 255;
+      d[i] = val;
+      d[i + 1] = val;
+      d[i + 2] = val;
+    }
+    return new ImageData(d, imageData.width, imageData.height);
+  },
+
+  /**
+   * Décode un fichier image sélectionné ou pris en photo
+   */
+  decodeImageFile(file, modal) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        canvas.width = Math.min(img.width, 1200);
+        canvas.height = Math.min(img.height, 1200);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let code = null;
+
+        if (typeof window.jsQR === 'function') {
+          code = window.jsQR(imgData.data, imgData.width, imgData.height, {
+            inversionAttempts: 'attemptBoth'
+          });
+
+          if (!code) {
+            const binarized = this.binarizeImageData(imgData);
+            code = window.jsQR(binarized.data, binarized.width, binarized.height, {
+              inversionAttempts: 'dontInvert'
+            });
+          }
+        }
+
+        if (code && code.data) {
+          this.handleDecodedCode(code.data, modal);
+        } else {
+          alert('Aucun QR code détecté sur cette photo. Assurez-vous que le code est bien visible et éclairé.');
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   },
 
   findClientByCode(codeText) {
@@ -6734,7 +6824,7 @@ const QRScannerComponent = {
     const clean = codeText.trim().toLowerCase();
     const clients = stateManager.getClients();
 
-    // 1. Recherche par identifiant direct
+    // 1. Recherche par identifiant direct (ex: client_1712345678)
     let match = clients.find(c => c.id.toLowerCase() === clean);
     if (match) return match;
 
@@ -6748,7 +6838,7 @@ const QRScannerComponent = {
 
     // 3. Recherche par nom complet ou téléphone
     match = clients.find(c => {
-      const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
+      const fullName = `${c.firstName || ''} ${c.lastName || ''}`.toLowerCase();
       return fullName.includes(clean) || (c.phone && c.phone.includes(clean));
     });
     return match;
@@ -6784,11 +6874,9 @@ const QRScannerComponent = {
     const client = this.findClientByCode(clientId) || this.findClientByCode(codeText);
 
     if (client) {
-      window.App.openClientDetail(client.id, 'attendance');
-      const clientCode = `CP-${client.id.slice(-6).toUpperCase()}`;
-      window.App.showToast(`Athlète identifié : ${client.firstName} ${client.lastName} (${clientCode})`, 'success');
+      this.showScanResultModal(client, receiptInfo);
     } else {
-      alert(`Code QR scanné : "${codeText}"\nAucun athlète correspondant trouvé.`);
+      alert(`Code scanné : "${codeText}"\nAucun athlète correspondant trouvé dans vos données.`);
     }
   },
 
@@ -6806,17 +6894,20 @@ const QRScannerComponent = {
 
     resultModal.classList.remove('hidden');
     resultModal.innerHTML = `
-      <div class="glass-card max-w-md w-full p-6 space-y-5 border-t-4 border-emerald-500 shadow-2xl">
+      <div class="glass-card max-w-md w-full p-6 space-y-5 border-t-4 border-emerald-500 shadow-2xl animate-fade-in">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
           <div class="flex items-center gap-2">
-            <span class="text-xl">✅</span>
-            <h3 class="text-base font-bold text-white">Athlète Reconnu</h3>
+            <span class="text-2xl">✅</span>
+            <div>
+              <h3 class="text-base font-bold text-white">Athlète Reconnu</h3>
+              <p class="text-[11px] text-emerald-400 font-mono font-bold">CP-${client.id.slice(-6).toUpperCase()}</p>
+            </div>
           </div>
           <button id="btn-close-scan-result" class="text-slate-400 hover:text-white p-1 text-lg font-bold">✕</button>
         </div>
 
         <div class="bg-slate-900/90 p-4 rounded-xl space-y-2 border border-slate-800">
-          <h2 class="text-lg font-bold text-emerald-400">${client.firstName} ${client.lastName}</h2>
+          <h2 class="text-lg font-black text-emerald-400">${client.firstName} ${client.lastName}</h2>
           <div class="text-xs text-slate-300 space-y-1.5">
             <p><strong>Objectifs :</strong> ${Array.isArray(client.goals) ? client.goals.join(', ') : (client.mainGoal || 'Transformation')}</p>
             <p><strong>Formule :</strong> ${pkg.packageName || 'Forfait'}</p>
@@ -6844,7 +6935,7 @@ const QRScannerComponent = {
 
     resultModal.querySelector('#btn-scan-log-attendance')?.addEventListener('click', () => {
       stateManager.logSessionAttendance(client.id, { notes: 'Séance pointée via Scan QR Code' });
-      alert(`Séance validée avec succès pour ${client.firstName} ! Il reste ${Math.max(0, remaining - 1)} séance(s).`);
+      window.App?.showToast?.(`Séance validée ! Reste ${Math.max(0, remaining - 1)} séance(s).`, 'success');
       resultModal.classList.add('hidden');
       if (window.App && typeof window.App.renderCurrentView === 'function') {
         window.App.renderCurrentView();
@@ -6875,6 +6966,22 @@ const QRScannerComponent = {
     closeBtn?.addEventListener('click', () => {
       this.stopCamera();
       modal.classList.add('hidden');
+    });
+
+    // Changer de caméra
+    const switchBtn = modal.querySelector('#btn-switch-camera');
+    switchBtn?.addEventListener('click', () => {
+      this.currentFacingMode = (this.currentFacingMode === 'environment') ? 'user' : 'environment';
+      this.startCamera(modal);
+    });
+
+    // Capture photo de reçu
+    const fileCapture = modal.querySelector('#input-qr-file-capture');
+    fileCapture?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        this.decodeImageFile(file, modal);
+      }
     });
 
     // Recherche manuelle
@@ -8643,8 +8750,38 @@ const SettingsModal = {
         <!-- 2. PROFIL DU COACH & EN-TÊTE DES REÇUS -->
         <form id="form-coach-profile" class="glass-card p-5 space-y-4">
           <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <span>👤</span> Profil du Coach &amp; Coordonnées sur les Tickets
+            <span>👤</span> Profil du Coach, Photo &amp; Coordonnées
           </h4>
+
+          <!-- Zone Photo de Profil Coach -->
+          <div class="flex items-center gap-4 p-3.5 bg-slate-900/90 rounded-2xl border border-slate-800">
+            <div class="relative w-16 h-16 rounded-2xl overflow-hidden bg-slate-950 border-2 border-emerald-500/40 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/10">
+              ${coach.photo ? `
+                <img id="coach-photo-preview" src="${coach.photo}" alt="Photo Coach" class="w-full h-full object-cover" />
+              ` : `
+                <span id="coach-photo-placeholder" class="text-2xl">🏋️‍♂️</span>
+                <img id="coach-photo-preview" src="" alt="Photo Coach" class="w-full h-full object-cover hidden" />
+              `}
+            </div>
+
+            <div class="space-y-1.5 flex-1">
+              <span class="text-xs font-bold text-white block">Photo de Profil &amp; Logo</span>
+              <p class="text-[11px] text-slate-400">S'affiche sur le tableau de bord, la barre latérale et vos fiches de suivi.</p>
+              
+              <div class="flex flex-wrap items-center gap-2 pt-1">
+                <label class="btn btn-primary btn-xs font-bold cursor-pointer flex items-center gap-1">
+                  <span>📷</span>
+                  <span>Changer Photo</span>
+                  <input type="file" id="input-coach-photo" accept="image/*" class="hidden" />
+                </label>
+                ${coach.photo ? `
+                  <button type="button" id="btn-remove-coach-photo" class="btn btn-outline btn-xs text-rose-400 hover:text-rose-300 font-bold">
+                    Supprimer
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -8685,7 +8822,7 @@ const SettingsModal = {
           </div>
 
           <div class="flex justify-end pt-1">
-            <button type="submit" class="btn btn-primary btn-sm font-bold">Enregistrer les Coordonnées</button>
+            <button type="submit" class="btn btn-primary btn-sm font-bold">Enregistrer le Profil</button>
           </div>
         </form>
 
@@ -8887,7 +9024,45 @@ const SettingsModal = {
       }
     });
 
-    // 1. Profil Coach
+    // 1. Profil Coach & Photo
+    const photoInput = document.getElementById('input-coach-photo');
+    photoInput?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (re) => {
+          const img = new Image();
+          img.onload = () => {
+            // Compression & recadrage carré pour performance
+            const canvas = document.createElement('canvas');
+            const size = Math.min(img.width, img.height);
+            canvas.width = 300;
+            canvas.height = 300;
+            const ctx = canvas.getContext('2d');
+            const startX = (img.width - size) / 2;
+            const startY = (img.height - size) / 2;
+            ctx.drawImage(img, startX, startY, size, size, 0, 0, 300, 300);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+            stateManager.updateCoachProfile({ photo: compressedDataUrl });
+            window.App?.showToast?.('Photo de profil mise à jour !', 'success');
+            this.render();
+            this.bindEvents();
+          };
+          img.src = re.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    const removePhotoBtn = document.getElementById('btn-remove-coach-photo');
+    removePhotoBtn?.addEventListener('click', () => {
+      stateManager.updateCoachProfile({ photo: '' });
+      window.App?.showToast?.('Photo supprimée', 'info');
+      this.render();
+      this.bindEvents();
+    });
+
     const profileForm = document.getElementById('form-coach-profile');
     profileForm?.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -10434,19 +10609,34 @@ const Dashboard = {
           </div>
         ` : ''}
 
-        <!-- En-tête Coach Lumineux -->
+        <!-- En-tête Coach Lumineux avec Photo & Badge -->
         <div class="glass-card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-emerald-500 shadow-xl">
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="badge badge-emerald text-xs">Espace Coach Privé</span>
-              ${coach.city ? `<span class="text-xs text-slate-300 font-semibold">• ${coach.city}</span>` : ''}
+          <div class="flex items-center gap-4">
+            <!-- Avatar / Photo du Coach -->
+            <div class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-slate-900 border-2 border-emerald-500/50 shrink-0 shadow-lg shadow-emerald-500/10 cursor-pointer" onclick="window.App.openSettingsModal()">
+              ${coach.photo ? `
+                <img src="${coach.photo}" alt="${displayName}" class="w-full h-full object-cover" />
+              ` : `
+                <div class="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-emerald-400">
+                  <span class="text-2xl sm:text-3xl">🏋️‍♂️</span>
+                </div>
+              `}
+              <span class="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-900"></span>
             </div>
-            <h1 class="text-2xl sm:text-3xl font-black text-white mt-1">
-              Bonjour, <span class="text-emerald-400">${displayName}</span>
-            </h1>
-            <p class="text-xs text-slate-300 mt-0.5">
-              ${coach.brand ? `<strong class="text-white">${coach.brand}</strong> • ` : ''}<span class="text-slate-300">${coach.motto ? `"${coach.motto}"` : 'Prêt pour les séances du jour'}</span>
-            </p>
+
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="badge badge-emerald text-xs font-bold">Espace Coach Privé</span>
+                <span class="text-xs text-slate-300 font-semibold">• ${licenseInfo.isLifetime ? '👑 Licence à Vie' : (licenseInfo.isTrial ? `⚡ Essai (${licenseInfo.daysRemaining}j)` : `📅 ${licenseInfo.typeName}`)}</span>
+                ${coach.city ? `<span class="text-xs text-slate-400 font-semibold">• 📍 ${coach.city}</span>` : ''}
+              </div>
+              <h1 class="text-xl sm:text-2xl font-black text-white mt-1">
+                Bonjour, <span class="text-emerald-400">${displayName}</span>
+              </h1>
+              <p class="text-xs text-slate-300 mt-0.5">
+                ${coach.brand ? `<strong class="text-white">${coach.brand}</strong> • ` : ''}<span class="text-slate-300">${coach.motto ? `"${coach.motto}"` : 'Prêt pour les séances du jour'}</span>
+              </p>
+            </div>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
@@ -10457,7 +10647,7 @@ const Dashboard = {
               <span>⚡</span> Calculateur
             </button>
             <button id="btn-dash-settings" class="btn btn-outline btn-sm font-semibold">
-              <span>⚙️</span> Profil
+              <span>⚙️</span> Profil &amp; Photo
             </button>
           </div>
         </div>

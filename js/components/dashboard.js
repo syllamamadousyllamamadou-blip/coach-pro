@@ -106,19 +106,34 @@ export const Dashboard = {
           </div>
         ` : ''}
 
-        <!-- En-tête Coach Lumineux -->
+        <!-- En-tête Coach Lumineux avec Photo & Badge -->
         <div class="glass-card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-emerald-500 shadow-xl">
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="badge badge-emerald text-xs">Espace Coach Privé</span>
-              ${coach.city ? `<span class="text-xs text-slate-300 font-semibold">• ${coach.city}</span>` : ''}
+          <div class="flex items-center gap-4">
+            <!-- Avatar / Photo du Coach -->
+            <div class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-slate-900 border-2 border-emerald-500/50 shrink-0 shadow-lg shadow-emerald-500/10 cursor-pointer" onclick="window.App.openSettingsModal()">
+              ${coach.photo ? `
+                <img src="${coach.photo}" alt="${displayName}" class="w-full h-full object-cover" />
+              ` : `
+                <div class="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-emerald-400">
+                  <span class="text-2xl sm:text-3xl">🏋️‍♂️</span>
+                </div>
+              `}
+              <span class="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-900"></span>
             </div>
-            <h1 class="text-2xl sm:text-3xl font-black text-white mt-1">
-              Bonjour, <span class="text-emerald-400">${displayName}</span>
-            </h1>
-            <p class="text-xs text-slate-300 mt-0.5">
-              ${coach.brand ? `<strong class="text-white">${coach.brand}</strong> • ` : ''}<span class="text-slate-300">${coach.motto ? `"${coach.motto}"` : 'Prêt pour les séances du jour'}</span>
-            </p>
+
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="badge badge-emerald text-xs font-bold">Espace Coach Privé</span>
+                <span class="text-xs text-slate-300 font-semibold">• ${licenseInfo.isLifetime ? '👑 Licence à Vie' : (licenseInfo.isTrial ? `⚡ Essai (${licenseInfo.daysRemaining}j)` : `📅 ${licenseInfo.typeName}`)}</span>
+                ${coach.city ? `<span class="text-xs text-slate-400 font-semibold">• 📍 ${coach.city}</span>` : ''}
+              </div>
+              <h1 class="text-xl sm:text-2xl font-black text-white mt-1">
+                Bonjour, <span class="text-emerald-400">${displayName}</span>
+              </h1>
+              <p class="text-xs text-slate-300 mt-0.5">
+                ${coach.brand ? `<strong class="text-white">${coach.brand}</strong> • ` : ''}<span class="text-slate-300">${coach.motto ? `"${coach.motto}"` : 'Prêt pour les séances du jour'}</span>
+              </p>
+            </div>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
@@ -129,7 +144,7 @@ export const Dashboard = {
               <span>⚡</span> Calculateur
             </button>
             <button id="btn-dash-settings" class="btn btn-outline btn-sm font-semibold">
-              <span>⚙️</span> Profil
+              <span>⚙️</span> Profil &amp; Photo
             </button>
           </div>
         </div>

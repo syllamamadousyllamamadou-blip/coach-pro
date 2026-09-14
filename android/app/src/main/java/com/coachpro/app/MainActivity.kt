@@ -163,9 +163,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAndRequestPermissions() {
-        val alreadyPrompted = prefs.getBoolean("has_prompted_runtime_permissions", false)
-        if (alreadyPrompted) return
-
         val permissionsToRequest = mutableListOf<String>()
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -189,10 +186,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (permissionsToRequest.isNotEmpty()) {
-            prefs.edit().putBoolean("has_prompted_runtime_permissions", true).apply()
             requestPermissionsLauncher.launch(permissionsToRequest.toTypedArray())
-        } else {
-            prefs.edit().putBoolean("has_prompted_runtime_permissions", true).apply()
         }
     }
 
