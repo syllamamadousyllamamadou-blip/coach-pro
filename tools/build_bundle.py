@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
 """
 tools/build_bundle.py
-Universal Bundler for COACH PRO
-Generates js/bundle.js and syncs all assets to Android assets folder.
+Universal Bundler & APK Builder for COACH PRO
+Generates js/bundle.js, syncs all assets to Android assets folder,
+and rebuilds & signs the standalone coachpro.apk!
 """
 
 import os
 import re
 import shutil
+import subprocess
+import zipfile
+import tempfile
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 JS_DIR = os.path.join(BASE_DIR, 'js')
 OUTPUT_BUNDLE = os.path.join(JS_DIR, 'bundle.js')
 ANDROID_ASSETS_DIR = os.path.join(BASE_DIR, 'android', 'app', 'src', 'main', 'assets')
+OUTPUT_APK = os.path.join(BASE_DIR, 'coachpro.apk')
+DEBUG_KEYSTORE = os.path.expanduser('~/.android/debug.keystore')
+
+ZIPALIGN_BIN = '/Users/mac/Android/sdk/build-tools/34.0.0/zipalign'
+APKSIGNER_BIN = '/Users/mac/Android/sdk/build-tools/34.0.0/apksigner'
 
 # Strict DAG Module Order
 MODULE_FILES = [
@@ -67,6 +76,61 @@ def clean_module_code(code: str, file_rel: str) -> str:
     header = f"\n/* ==========================================================================\n   MODULE: {file_rel}\n   ========================================================================== */\n"
     return header + code.strip() + "\n"
 
+def rebuild_apk():
+    print("[*] Rebuilding Android APK (coachpro.apk) with fresh web assets...")
+    source_apk = os.path.join(BASE_DIR, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
+    if not os.path.exists(source_apk):
+        source_apk = OUTPUT_APK
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        extracted_apk = os.path.join(tmp_dir, 'extracted')
+        os.makedirs(extracted_apk, exist_ok=True)
+
+        # 1. Extract source APK (excluding META-INF signatures)
+        with zipfile.ZipFile(source_apk, 'r') as z_in:
+            for item in z_in.infolist():
+                if not item.filename.startswith('META-INF/'):
+                    z_in.extract(item, extracted_apk)
+
+        # 2. Update assets folder
+        apk_assets_dir = os.path.join(extracted_apk, 'assets')
+        if os.path.exists(apk_assets_dir):
+            shutil.rmtree(apk_assets_dir)
+        shutil.copytree(ANDROID_ASSETS_DIR, apk_assets_dir)
+
+        # 3. Create unaligned APK
+        unaligned_apk = os.path.join(tmp_dir, 'unaligned.apk')
+        aligned_apk = os.path.join(tmp_dir, 'aligned.apk')
+
+        with zipfile.ZipFile(unaligned_apk, 'w', zipfile.ZIP_DEFLATED) as z_out:
+            for root, _, files in os.walk(extracted_apk):
+                for f in files:
+                    full_p = os.path.join(root, f)
+                    rel_p = os.path.relpath(full_p, extracted_apk)
+                    z_out.write(full_p, rel_p)
+
+        # 4. Zipalign
+        if os.path.exists(ZIPALIGN_BIN):
+            subprocess.run([ZIPALIGN_BIN, '-f', '-p', '4', unaligned_apk, aligned_apk], check=True)
+        else:
+            shutil.copy2(unaligned_apk, aligned_apk)
+
+        # 5. Sign with apksigner
+        if os.path.exists(APKSIGNER_BIN) and os.path.exists(DEBUG_KEYSTORE):
+            sign_cmd = [
+                APKSIGNER_BIN, 'sign',
+                '--ks', DEBUG_KEYSTORE,
+                '--ks-pass', 'pass:android',
+                '--key-pass', 'pass:android',
+                '--out', OUTPUT_APK,
+                aligned_apk
+            ]
+            subprocess.run(sign_cmd, check=True)
+            print(f"[✓] coachpro.apk signed successfully with apksigner! ({os.path.getsize(OUTPUT_APK) / (1024*1024):.2f} MB)")
+        else:
+            shutil.copy2(aligned_apk, OUTPUT_APK)
+            print(f"[✓] coachpro.apk packaged! ({os.path.getsize(OUTPUT_APK) / (1024*1024):.2f} MB)")
+
 def build():
     print(f"[*] Building COACH PRO Universal Bundle from {len(MODULE_FILES)} modules...")
     bundle_parts = [
@@ -115,6 +179,9 @@ def build():
         shutil.copy2(OUTPUT_BUNDLE, os.path.join(dst_js, 'bundle.js'))
         
         print("[✓] Android assets synced successfully.")
+
+    # Rebuild & Sign APK
+    rebuild_apk()
 
 if __name__ == '__main__':
     build()
